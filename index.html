@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Helm — Stage 1</title>
+<title>Helm — 1.1</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <style>
@@ -80,7 +80,9 @@
   /* ---------- Narrow screens (phone / portrait) ---------- */
   @media (max-width:820px){
     #app{grid-template-columns:1fr;grid-template-rows:1fr auto}
-    #panel{border-left:0;border-top:1px solid var(--line);max-height:48%}
+    #app{grid-template-rows:minmax(240px,1fr) minmax(0,48vh)}
+    #panel{border-left:0;border-top:1px solid var(--line);overflow-y:auto}
+    #list{flex:none}
     .readout .big{font-size:40px}
   }
 </style>
@@ -116,8 +118,10 @@
       <button id="follow" class="on">Follow boat</button>
       <button id="testVoice">Test voice</button>
       <button id="demo">Demo run</button>
+      <button id="export">Back up points</button><button id="import">Restore points</button>
+      <input id="importFile" type="file" accept=".json,application/json" hidden>
     </div>
-    <div id="list"></div>
+    <p style="padding:0 20px;font-size:13px">Helm 1.1 · Reference only. Not a substitute for official charts. Maps require internet.</p><div id="list"></div>
   </aside>
 </div>
 
@@ -131,8 +135,39 @@ L.control.scale({imperial:false}).addTo(map);
 
 // ===================== 2. Waypoints (saved on the device) =====================
 const KEY = 'helm.waypoints';
-let waypoints = JSON.parse(localStorage.getItem(KEY) || '[]');
-const save = () => localStorage.setItem(KEY, JSON.stringify(waypoints));
+function cleanPoints(data){
+  if(!Array.isArray(data)||data.length>10000)throw Error('Expected a list of up to 10,000 points.');
+  return data.map(w=>{
+    if(!w||typeof w.name!=='string'||!w.name.trim()||w.name.length>200||
+       !['waypoint','hazard'].includes(w.type)||!Number.isFinite(w.lat)||Math.abs(w.lat)>90||
+       !Number.isFinite(w.lng)||Math.abs(w.lng)>180||!Number.isFinite(w.radius)||w.radius<20||w.radius>100000)
+      throw Error('Invalid point name, coordinates, type or radius (20–100,000 m).');
+    return {name:w.name.trim(),type:w.type,lat:w.lat,lng:w.lng,radius:w.radius,inside:false};
+  });
+}
+let waypoints=[];
+try{waypoints=cleanPoints(JSON.parse(localStorage.getItem(KEY)||'[]'));}
+catch(e){alert('Saved points could not be loaded. Existing storage has not been changed. '+e.message);}
+function save(next=waypoints){
+  try{localStorage.setItem(KEY,JSON.stringify(next.map(({inside,...w})=>w)));return true;}
+  catch(e){alert('Unable to save points. Back up your points and check device storage.');return false;}
+}
+document.getElementById('export').onclick=()=>{
+  const blob=new Blob([JSON.stringify({app:'Helm',version:1,points:waypoints.map(({inside,...w})=>w)},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='helm-waypoints-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+};
+document.getElementById('import').onclick=()=>document.getElementById('importFile').click();
+document.getElementById('importFile').onchange=async e=>{
+  const file=e.target.files[0];e.target.value='';if(!file)return;
+  try{
+    if(file.size>5000000)throw Error('Backup exceeds 5 MB.');
+    const data=JSON.parse(await file.text()),points=cleanPoints(Array.isArray(data)?data:data.points);
+    if(!confirm('Restore '+points.length+' points? This replaces your current '+waypoints.length+' points. Back up first to keep them.'))return;
+    if(save(points)){clearSpeech();waypoints=points;drawWaypoints();}
+  }catch(err){alert('Backup not restored. '+err.message);}
+};
 const wpLayer = L.layerGroup().addTo(map);
 
 function drawWaypoints(){
@@ -141,7 +176,7 @@ function drawWaypoints(){
     const colour = w.type==='hazard' ? '#F26A21' : '#3E9B45';
     L.circle([w.lat,w.lng],{radius:w.radius,color:colour,weight:1.5,fillOpacity:.08}).addTo(wpLayer);
     L.circleMarker([w.lat,w.lng],{radius:8,color:'#fff',weight:2,fillColor:colour,fillOpacity:1})
-      .bindTooltip(w.name,{permanent:true,direction:'top',offset:[0,-8]}).addTo(wpLayer);
+      .bindTooltip(esc(w.name),{permanent:true,direction:'top',offset:[0,-8]}).addTo(wpLayer);
   });
   renderList();
 }
@@ -160,7 +195,7 @@ function renderList(){
       <button data-del="${i}">Remove</button>
     </div>`).join('');
   el.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
-    const i=+b.dataset.del; if(confirm('Remove "'+waypoints[i].name+'"?')){waypoints.splice(i,1);save();drawWaypoints();}
+    const i=+b.dataset.del; if(confirm('Remove "'+waypoints[i].name+'"?')){const next=waypoints.filter((_,n)=>n!==i);if(save(next)){clearSpeech();waypoints=next;drawWaypoints();}}
   });
   el.querySelectorAll('.wp').forEach(r=>r.onclick=e=>{
     if(e.target.tagName==='BUTTON')return;
@@ -183,15 +218,18 @@ document.getElementById('wpCancel').onclick=()=>sheet.classList.remove('open');
 document.getElementById('wpSave').onclick=()=>{
   const name=document.getElementById('wpName').value.trim();
   if(!name){alert('Give it a name — that is what gets spoken.');return;}
-  waypoints.push({name, type:document.getElementById('wpType').value,
-    radius:Math.max(20,+document.getElementById('wpRadius').value||200), lat:pending.lat, lng:pending.lng, inside:false});
-  save(); drawWaypoints(); sheet.classList.remove('open');
+  if(name.length>200){alert('Use a name of 200 characters or fewer.');return;}
+  const radius=Number(document.getElementById('wpRadius').value);
+  if(!Number.isFinite(radius)||radius<20||radius>100000){alert('Choose a radius between 20 and 100,000 metres.');return;}
+  const next=[...waypoints,{name, type:document.getElementById('wpType').value,
+    radius,lat:pending.lat,lng:pending.lng,inside:false}];
+  if(save(next)){waypoints=next;drawWaypoints();sheet.classList.remove('open');}
 };
 
 // ===================== 3. Voice =====================
+function clearSpeech(){if('speechSynthesis' in window)speechSynthesis.cancel();}
 function speak(text){
   if(!('speechSynthesis' in window))return;
-  speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(text); u.lang='en-NZ'; u.rate=0.95;
   speechSynthesis.speak(u);
 }
@@ -236,47 +274,105 @@ function distance(a,b,c,d){ // metres between two lat/lng points
 // --- The alert logic: speak once when entering a radius, reset once well clear of it ---
 function checkAlerts(lat,lng){
   let nearest=null;
+  const alerts=[];
   waypoints.forEach((w,i)=>{
     const d=distance(lat,lng,w.lat,w.lng);
     const el=document.querySelector(`.dist[data-i="${i}"]`); if(el)el.textContent=fmtDist(d);
     if(!nearest||d<nearest.d)nearest={w,d};
     if(d<=w.radius&&!w.inside){
       w.inside=true;
-      speak((w.type==='hazard'?'Caution. Hazard. ':'Approaching ')+w.name+', '+Math.round(d/10)*10+' metres.');
+      alerts.push({hazard:w.type==='hazard',text:(w.type==='hazard'?'Caution. Hazard. ':'Approaching ')+w.name+', '+Math.round(d/10)*10+' metres.'});
     } else if(d>w.radius*1.3&&w.inside){ w.inside=false; }   // 30% buffer so it doesn't re-trigger on the edge
   });
+  alerts.sort((a,b)=>Number(b.hazard)-Number(a.hazard)).forEach(a=>speak(a.text));
   document.getElementById('nearest').textContent=nearest?nearest.w.name+' '+fmtDist(nearest.d):'—';
 }
 const fmtDist=d=>d<1000?Math.round(d)+' m':(d/1852).toFixed(2)+' nm';
 
 // --- Start: one tap unlocks GPS, voice and keep-awake (iPad needs a user tap for all three) ---
 const startBtn=document.getElementById('start');
-startBtn.onclick=async()=>{
-  if(watchId!=null){navigator.geolocation.clearWatch(watchId);watchId=null;stopDemo();
-    startBtn.textContent='Start GPS';startBtn.classList.add('primary');setGps(false,'GPS off');return;}
+let mode='off', session=0, lastFixTime=0, gpsStarted=0, staleWarned=false, wakeLock=null;
+function resetAlerts(){waypoints.forEach(w=>w.inside=false);}
+function clearReadouts(){
+  lastFix=null;
+  document.getElementById('sog').innerHTML='—<small>knots</small>';
+  ['cog','pos','acc','nearest'].forEach(id=>document.getElementById(id).textContent='—');
+  document.querySelectorAll('.dist').forEach(el=>el.textContent='—');
+  if(boat){map.removeLayer(boat);boat=null;}
+  if(accCircle){map.removeLayer(accCircle);accCircle=null;}
+}
+async function keepAwake(){
+  if(mode==='off'||document.visibilityState!=='visible'||wakeLock||!('wakeLock' in navigator))return;
+  const token=session;
+  try{
+    const lock=await navigator.wakeLock.request('screen');
+    if(token!==session||mode==='off'){await lock.release();return;}
+    wakeLock=lock;lock.addEventListener('release',()=>{if(wakeLock===lock)wakeLock=null;});
+  }catch(e){}
+}
+function stopTracking(){
+  session++;mode='off';
+  if(watchId!=null){navigator.geolocation.clearWatch(watchId);watchId=null;}
+  if(demoTimer!=null){clearInterval(demoTimer);demoTimer=null;}
+  if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null;}
+  clearSpeech();resetAlerts();clearReadouts();
+  document.getElementById('demo').classList.remove('on');
+  document.getElementById('demo').textContent='Demo run';
+  startBtn.textContent='Start GPS';startBtn.classList.add('primary');
+  setGps(false,'GPS off');
+}
+function gpsUnavailable(message){
+  clearReadouts();setGps(false,message);
+  if(!staleWarned){clearSpeech();speak('Caution. GPS position unavailable.');staleWarned=true;}
+}
+startBtn.onclick=()=>{
+  if(mode==='gps'){stopTracking();return;}
+  stopTracking();
   if(!navigator.geolocation){alert('This browser has no location support.');return;}
-  speak('Helm ready.');                         // warms up the voice so later alerts play
-  try{ if('wakeLock' in navigator) await navigator.wakeLock.request('screen'); }catch(e){}
-  setGps(false,'Waiting for satellites…');
-  watchId=navigator.geolocation.watchPosition(p=>{
-      setGps(true,'GPS live');
-      onFix(p.coords.latitude,p.coords.longitude,p.coords.speed,p.coords.heading,p.coords.accuracy);
-    }, err=>{ setGps(false,'GPS error: '+err.message); },
-    {enableHighAccuracy:true,maximumAge:1000,timeout:20000});
+  mode='gps';const token=session;lastFixTime=0;gpsStarted=Date.now();staleWarned=false;
+  speak('Helm ready.');keepAwake();
+  setGps(false,'Waiting for GPS…');
   startBtn.textContent='Stop GPS';startBtn.classList.remove('primary');
+  watchId=navigator.geolocation.watchPosition(p=>{
+    if(mode!=='gps'||session!==token)return;
+    if(!Number.isFinite(p.timestamp)||Date.now()-p.timestamp>15000||
+       !Number.isFinite(p.coords.latitude)||!Number.isFinite(p.coords.longitude)){
+      gpsUnavailable('GPS position stale — alerts paused');return;
+    }
+    lastFixTime=p.timestamp;staleWarned=false;
+    setGps(true,'GPS live');
+    onFix(p.coords.latitude,p.coords.longitude,p.coords.speed,p.coords.heading,p.coords.accuracy);
+  },err=>{
+    if(mode!=='gps'||session!==token)return;
+    if(err.code===1){stopTracking();setGps(false,'Location permission denied');return;}
+    gpsUnavailable('GPS unavailable — alerts paused');
+  },{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
 };
+setInterval(()=>{
+  if(mode==='gps'&&Date.now()-(lastFixTime||gpsStarted)>15000)
+    gpsUnavailable('GPS position stale — alerts paused');
+},1000);
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){
+    if(mode==='gps'&&Date.now()-(lastFixTime||gpsStarted)>15000)gpsUnavailable('GPS position stale — alerts paused');
+    keepAwake();
+  }
+});
+window.addEventListener('pagehide',stopTracking);
 function setGps(live,text){document.getElementById('gps').classList.toggle('live',live);document.getElementById('gpsText').textContent=text;}
 
 // ===================== 5. Demo run (test at the desk without moving) =====================
 // Drives a pretend boat from the map centre through every waypoint at ~8 knots.
 let demoTimer=null;
-function stopDemo(){if(demoTimer){clearInterval(demoTimer);demoTimer=null;document.getElementById('demo').classList.remove('on');}}
+function stopDemo(){if(mode==='demo')stopTracking();}
 document.getElementById('demo').onclick=()=>{
   if(demoTimer){stopDemo();return;}
   if(!waypoints.length){alert('Add a waypoint or two first, then run the demo.');return;}
-  if(watchId!=null)startBtn.onclick();          // switch real GPS off while pretending
+  stopTracking();mode='demo';keepAwake();
   speak('Demo run started.');
   document.getElementById('demo').classList.add('on');
+  document.getElementById('demo').textContent='Stop demo';
+  setGps(false,'Demo — simulated position');
   waypoints.forEach(w=>w.inside=false);
   let c=map.getCenter(), pos={lat:c.lat,lng:c.lng}, idx=0;
   demoTimer=setInterval(()=>{
@@ -284,8 +380,8 @@ document.getElementById('demo').onclick=()=>{
     const d=distance(pos.lat,pos.lng,t.lat,t.lng), step=4.1; // metres per tick ≈ 8 kn at 1 tick/sec
     if(d<step){idx++;return;}
     const f=step/d; pos={lat:pos.lat+(t.lat-pos.lat)*f,lng:pos.lng+(t.lng-pos.lng)*f};
-    const hdg=(Math.atan2(t.lng-pos.lng,t.lat-pos.lat)*180/Math.PI+360)%360;
-    setGps(true,'Demo (pretend GPS)');
+    const hdg=(Math.atan2((t.lng-pos.lng)*Math.cos(pos.lat*Math.PI/180),t.lat-pos.lat)*180/Math.PI+360)%360;
+    setGps(false,'Demo — simulated position');
     onFix(pos.lat,pos.lng,4.1,hdg,5);
   },1000);
 };
