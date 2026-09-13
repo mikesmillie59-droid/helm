@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.3">
+<html lang="en" data-helm-version="1.4">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Helm — 1.3</title>
+<title>Helm — 1.4</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -735,7 +735,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     background:#1F262B;color:var(--buff);padding:0 14px;width:100%}
 
   /* ---------- Side panel ---------- */
-  #panel{display:flex;flex-direction:column;border-left:1px solid var(--line);overflow-y:auto}
+  #panel{display:flex;flex-direction:column;min-height:0;min-width:0;border-left:1px solid var(--line);overflow-y:auto}
   #panel > *{flex-shrink:0}
   .chart-settings{padding:12px 20px;border-bottom:1px solid var(--line)}
   .chart-settings summary{cursor:pointer;font-size:18px;min-height:44px;padding:10px 0}
@@ -756,7 +756,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   .controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line)}
   .controls .full{grid-column:1/-1}
 
-  #list{flex:1;overflow-y:auto;padding:10px 20px 20px}
+  #list{flex:0 0 auto;overflow:visible;padding:10px 20px 20px}
   #list h2{font-size:15px;font-weight:600;color:var(--buff-dim);margin:10px 0 8px}
   .wp{display:grid;grid-template-columns:14px 1fr auto;gap:12px;align-items:center;
     padding:12px 0;border-bottom:1px solid var(--line)}
@@ -830,6 +830,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <button id="export">Back up points</button><button id="import">Restore points</button>
       <input id="importFile" type="file" accept=".json,application/json" hidden>
     </div>
+    <div id="list"></div>
     <details class="chart-settings">
       <summary>Charts &amp; offline status</summary>
       <label for="chartSource">Background</label>
@@ -853,7 +854,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <p>Offline chart downloads are not included in this version. A blank background offline does not mean clear water.</p>
     </details>
     <p id="offlineStatus" role="status">Checking offline app…</p>
-    <p style="padding:0 20px;font-size:13px">Helm 1.3 · Reference only. Not a substitute for official charts. Maps require internet.</p><div id="list"></div>
+    <p style="padding:0 20px;font-size:13px">Helm 1.4 · Reference only. Not a substitute for official charts. Maps require internet.</p>
   </aside>
 </div>
 
@@ -1212,7 +1213,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.3'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.4'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
