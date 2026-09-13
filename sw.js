@@ -1,6 +1,7 @@
 'use strict';
+// Offline fix 1.2.1: bypass HTTP cache and reject outdated app HTML.
 // Cache only the self-contained app, never third-party map/chart tiles.
-const VERSION='1.2';
+const VERSION='1.3';
 const SCOPE=new URL(self.registration.scope);
 const PREFIX='helm-shell-'+SCOPE.pathname+'-';
 const CACHE=PREFIX+VERSION;
@@ -31,8 +32,11 @@ self.addEventListener('fetch',event=>{
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),5000);
     try{
-      const response=await fetch(event.request,{signal:controller.signal});
-      if(response.ok&&response.headers.get('content-type')?.includes('text/html'))return response;
+      const response=await fetch(event.request,{signal:controller.signal,cache:'no-store'});
+      if(response.ok&&response.headers.get('content-type')?.includes('text/html')){
+        const html=await response.clone().text();
+        if(html.includes('data-helm-version="'+VERSION+'"'))return response;
+      }
     }catch(e){}finally{clearTimeout(timer);}
     const cache=await caches.open(CACHE),saved=await cache.match(APP);
     return saved||new Response('Helm is not saved offline. Reconnect and reopen the app.',{status:503,headers:{'Content-Type':'text/plain'}});
