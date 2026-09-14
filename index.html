@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.9">
+<html lang="en" data-helm-version="1.9.1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Helm — 1.9</title>
+<title>Helm — 1.9.1</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -779,7 +779,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   #sheet .actions button{flex:1;padding:0 10px}
   #wpDelete{width:100%;margin-top:16px;border:1px solid var(--orange);color:var(--orange)}
   #wpCoordinates{font-size:14px;color:var(--buff-dim)}
-  .point-icon{background:transparent;border:0}.point-icon svg{width:32px;height:32px;filter:drop-shadow(0 1px 3px #222)}
+  .point-icon{background:transparent;border:0}.point-icon svg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:var(--point-size,28px);height:var(--point-size,28px);filter:drop-shadow(0 1px 3px #222);transition:width .15s,height .15s}
+  .helm-point-label{font-size:var(--point-label-size,12px);padding:3px 6px}
   #proximityAlert{padding:14px 16px;margin:0 12px 12px;border:2px solid var(--green);border-radius:10px;background:#253d32}
   #proximityAlert.hazard{border-color:var(--orange);background:#4a3024}
   #proximityAlert strong,#proximityAlert span{display:block;overflow-wrap:anywhere}
@@ -843,7 +844,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.9</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <header class="helm-header"><strong>Helm <small>1.9.1</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
     <p id="setupNotice" class="status" hidden></p>
     <section id="proximityAlert" hidden aria-label="Nearby saved point">
       <span id="alertKind"></span><strong id="alertName"></strong><span id="alertDistance"></span><span id="alertMore"></span>
@@ -916,7 +917,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <p id="seamarkStatus" role="status">Seamarks off.</p>
       <p id="offlineStatus" role="status">Checking offline app…</p>
     </details>
-    <p class="reference-note">Helm 1.9 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
+    <p class="reference-note">Helm 1.9.1 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
   </div>
 </dialog>
 
@@ -927,6 +928,14 @@ let backgroundLayer=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png'
   attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'}).addTo(map);
 L.control.zoom({position:'topright'}).addTo(map);
 L.control.scale({imperial:false}).addTo(map);
+// Scale the visible symbol, retaining a 44 px transparent target for touch editing.
+function updatePointSizes(){
+ const size=Math.max(16,Math.min(40,16+(map.getZoom()-8)*3));
+ const style=document.getElementById('map').style;
+ style.setProperty('--point-size',size+'px');
+ style.setProperty('--point-label-size',(11+(size-16)/8)+'px');
+}
+map.on('zoomend',updatePointSizes);updatePointSizes();
 
 // ===================== 2. Waypoints (saved on the device) =====================
 const KEY = 'helm.waypoints';
@@ -971,9 +980,9 @@ function drawWaypoints(){
     const hazard=w.type==='hazard',colour=hazard?'#F26A21':'#3E9B45';
     L.circle([w.lat,w.lng],{radius:w.radius,color:colour,weight:1.5,fillOpacity:.08,interactive:false}).addTo(wpLayer);
     const shape=hazard?'<path d="M16 2 L30 29 H2 Z" fill="#F26A21" stroke="white" stroke-width="2"/><text x="16" y="24" text-anchor="middle" font-size="21" font-weight="bold" fill="#1a1a1a">!</text>':'<circle cx="16" cy="16" r="11" fill="#3E9B45" stroke="white" stroke-width="3"/>';
-    L.marker([w.lat,w.lng],{icon:L.divIcon({className:'point-icon',html:'<svg viewBox="0 0 32 32" aria-hidden="true">'+shape+'</svg>',iconSize:[32,32],iconAnchor:[16,16]}),
+    L.marker([w.lat,w.lng],{icon:L.divIcon({className:'point-icon',html:'<svg viewBox="0 0 32 32" aria-hidden="true">'+shape+'</svg>',iconSize:[44,44],iconAnchor:[22,22]}),
       title:(hazard?'Hazard: ':'Waypoint: ')+w.name+' — edit point',alt:(hazard?'Hazard: ':'Waypoint: ')+w.name,keyboard:true,bubblingMouseEvents:false})
-      .bindTooltip(esc(w.name),{permanent:true,direction:'top',offset:[0,-16]}).on('click',()=>{if(!placing)editPoint(w);}).addTo(wpLayer);
+      .bindTooltip(esc(w.name),{permanent:true,direction:'top',offset:[0,-22],className:'helm-point-label'}).on('click',()=>{if(!placing)editPoint(w);}).addTo(wpLayer);
   });
   renderList();
 }
@@ -1539,7 +1548,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.9'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.9.1'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
