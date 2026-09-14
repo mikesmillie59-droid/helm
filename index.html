@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.8">
+<html lang="en" data-helm-version="1.8.1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Helm — 1.8</title>
+<title>Helm — 1.8.1</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -837,7 +837,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.8</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <header class="helm-header"><strong>Helm <small>1.8.1</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
     <p id="setupNotice" class="status" hidden></p>
     <section id="proximityAlert" hidden aria-label="Nearby saved point">
       <span id="alertKind"></span><strong id="alertName"></strong><span id="alertDistance"></span><span id="alertMore"></span>
@@ -900,7 +900,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <input id="importFile" type="file" accept=".json,application/json" hidden>
     </div></section>
     <p id="offlineStatus" role="status">Checking offline app…</p>
-    <p class="reference-note">Helm 1.8 · Reference only. Not a substitute for official charts.</p>
+    <p class="reference-note">Helm 1.8.1 · Reference only. Not a substitute for official charts.</p>
   </div>
 </dialog>
 
@@ -1353,7 +1353,7 @@ let catalogueRequest=null;
 function catalogueURL(){
  const key=linzKey.value.trim();
  if(!/^[A-Za-z0-9_-]{10,128}$/.test(key))throw Error('Enter your LINZ key first.');
- return 'https://data.linz.govt.nz/services;key='+encodeURIComponent(key)+'/wmts/?SERVICE=WMTS&REQUEST=GetCapabilities&VERSION=1.0.0';
+ return 'https://data.linz.govt.nz/services;key='+encodeURIComponent(key)+'/wmts/1.0.0/WMTSCapabilities.xml';
 }
 function installCatalogue(records){
  nationalCharts=validateCatalogue(records);CHARTS=mergedCharts(nationalCharts);
@@ -1369,13 +1369,21 @@ document.getElementById('loadCatalogue').onclick=async()=>{
  let url;try{url=catalogueURL();}catch(e){status.textContent=e.message;return;}
  catalogueRequest?.abort();const request=new AbortController();catalogueRequest=request;
  button.disabled=true;status.textContent='Loading LINZ chart catalogue…';
+ let responseStatus=null,stage='download';
  const timer=setTimeout(()=>request.abort(),30000);
  try{
   const response=await fetch(url,{signal:request.signal,credentials:'omit',referrerPolicy:'no-referrer'});
+  responseStatus=response.status;
   if(!response.ok)throw Error('Catalogue request failed.');
   const xml=await response.text();if(request.signal.aborted)throw Error('Cancelled');
+  stage='parse';
   installCatalogue(parseCatalogue(xml));
- }catch(e){if(catalogueRequest===request)status.textContent='Catalogue could not be loaded. Your existing charts are unchanged. Check internet and key, or use Import catalogue file instead.';}
+ }catch(e){if(catalogueRequest===request){
+  const reason=request.signal.aborted?'The request timed out.':
+   stage==='parse'?'LINZ responded, but no usable NZ chart catalogue could be read.':
+   responseStatus?'LINZ returned HTTP '+responseStatus+'.':'The browser could not read the LINZ response (network or cross-origin access).';
+  status.textContent='Catalogue could not be loaded. '+reason+' Your existing charts are unchanged. Try Open LINZ catalogue under Import catalogue file instead.';
+ }}
  finally{clearTimeout(timer);if(catalogueRequest===request){catalogueRequest=null;button.disabled=false;}}
 };
 document.getElementById('openCatalogue').onclick=()=>{
@@ -1499,7 +1507,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.8'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.8.1'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
