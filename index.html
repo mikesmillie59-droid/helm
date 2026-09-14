@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.8.1">
+<html lang="en" data-helm-version="1.9">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Helm — 1.8.1</title>
+<title>Helm — 1.9</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -808,6 +808,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   .settings-header{position:sticky;top:0;background:var(--slate);z-index:2}.settings-header h2{font-size:22px;margin:0}
   .settings-header button{min-height:48px}.tools-section h3{font-size:17px;padding:0 20px}
   .settings-body{padding-bottom:12px}
+  .settings-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .settings-actions button{padding:8px;font-size:16px}
+  .chart-settings h3{font-size:16px;margin:20px 0 8px}
+  #advancedSettings #offlineStatus{padding:0}
+  .chart-settings>summary{font-weight:600}
+
   /* ---------- Narrow screens (phone / portrait) ---------- */
   @media (max-width:820px){
     #app{grid-template-columns:1fr;grid-template-rows:1fr auto}
@@ -837,7 +843,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.8.1</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <header class="helm-header"><strong>Helm <small>1.9</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
     <p id="setupNotice" class="status" hidden></p>
     <section id="proximityAlert" hidden aria-label="Nearby saved point">
       <span id="alertKind"></span><strong id="alertName"></strong><span id="alertDistance"></span><span id="alertMore"></span>
@@ -862,45 +868,55 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 <dialog id="settingsDialog" aria-labelledby="settingsTitle">
   <header class="settings-header"><h2 id="settingsTitle">Settings</h2><button id="closeSettings" autofocus>Done</button></header>
   <div class="settings-body">
-    <details class="chart-settings" open>
-      <summary>Charts &amp; offline status</summary>
+    <details class="chart-settings" id="mapSettings" open>
+      <summary>Map &amp; charts</summary>
       <label for="chartSource">Background</label>
-      <select id="chartSource"><option value="street">Street map (online)</option><option value="linz">LINZ reference chart (online)</option></select>
+      <select id="chartSource"><option value="street">Street map</option><option value="linz">LINZ reference charts</option></select>
+      <div id="mapLinzControls" hidden>
+        <label for="chartMode">Chart mode</label>
+        <select id="chartMode"><option value="auto">Automatic NZ charts</option><option value="manual">Choose a specific chart</option></select>
+        <p>Automatic mode selects detail as you move and zoom.</p>
+      </div>
+      <button id="applyChart">Apply map settings</button>
+      <label for="chartArea">Explore an area</label>
+      <select id="chartArea"><option value="nz">All New Zealand</option><option value="northland">Northland / Bay of Islands</option><option value="gulf" selected>Hauraki Gulf</option><option value="tauranga">Tauranga</option><option value="gisborne">Gisborne</option><option value="napier">Napier</option><option value="taranaki">New Plymouth</option><option value="wellington">Wellington / Cook Strait</option><option value="sounds">Marlborough Sounds</option><option value="nelson">Nelson / Tasman Bay</option><option value="westport">Westport</option><option value="lyttelton">Lyttelton / Banks Peninsula</option><option value="otago">Otago Harbour</option><option value="fiordland">Fiordland</option><option value="stewart">Stewart Island / Rakiura</option><option value="chatham">Chatham Islands</option><option value="auckland">Auckland Harbour</option><option value="kawau">Kawau Island</option><option value="waiheke">Waiheke Island</option><option value="barrier">Great Barrier Island</option><option value="mercury">Mercury Islands</option></select>
+      <button id="showArea">Show area</button>
+      <label><input id="seamarks" type="checkbox"> Show OpenSeaMap buoys and beacons</label>
+      <p>Optional community overlay. Symbols do not trigger hazard alerts.</p>
+    </details>
+    <details class="chart-settings" id="pointsSettings">
+      <summary>Saved points</summary>
+      <p>Save a copy of your waypoints and hazards, or transfer them to another device.</p>
+      <div class="settings-actions"><button id="export">Back up points</button><button id="import">Restore points</button></div>
+      <input id="importFile" type="file" accept=".json,application/json" hidden>
+    </details>
+    <details class="chart-settings" id="voiceSettings">
+      <summary>Voice &amp; demo</summary>
+      <div class="settings-actions"><button id="testVoice">Test voice</button><button id="demo">Demo run</button></div>
+    </details>
+    <details class="chart-settings" id="advancedSettings">
+      <summary>Advanced &amp; troubleshooting</summary>
       <div id="linzSettings" hidden>
-        <label for="chartSearch">Find a chart</label>
-        <input id="chartSearch" type="search" placeholder="Place name or chart number">
-        <label for="chartId">Chart</label>
-        <select id="chartId"><option value="auto">Automatic — available NZ charts</option></select>
-        <p>Automatic mode adds more detailed charts as you zoom in, with broader charts underneath. Detail is limited by the original chart scale.</p>
+        <h3>Specific chart</h3>
+        <label for="chartSearch">Find a chart</label><input id="chartSearch" type="search" placeholder="Place name or chart number">
+        <label for="chartId">Chart</label><select id="chartId"><option value="auto">Automatic — available NZ charts</option></select>
+        <div class="settings-actions"><button id="applyManual">Apply selected chart</button><button id="showChart">Show chart area</button></div>
+        <h3>LINZ connection &amp; catalogue</h3>
         <label for="linzKey">Your LINZ Data Service access key</label>
         <input id="linzKey" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" placeholder="Paste key here on this device">
         <button id="loadCatalogue">Load / refresh NZ chart catalogue</button>
         <p id="catalogueStatus" role="status">Nine Gulf charts included. Load the catalogue for nationwide chart selection.</p>
         <details><summary>Import catalogue file instead</summary><p>If the online catalogue request fails, open the LINZ catalogue with the button below, save the XML file, then import it here. The XML may contain your key; keep it private. Helm saves only chart names, IDs and bounds.</p><button id="openCatalogue">Open LINZ catalogue</button><label for="catalogueFile">Import LINZ WMTS XML</label><input id="catalogueFile" type="file" accept=".xml,text/xml,application/xml"></details>
         <label><input id="rememberKey" type="checkbox"> Remember key on this device</label>
-        <p>Obtain a web-services key from <a href="https://data.linz.govt.nz/my/api/" target="_blank" rel="noopener noreferrer">LINZ Data Service</a>. It is sent only to LINZ when loading charts, and is excluded from waypoint backups.</p>
-        <p>These raster images are for reference only, may not reflect current Notices to Mariners, and are not for navigation. Each chart has a fixed footprint; blank areas are not evidence of clear water.</p>
+        <button id="forgetKey">Forget saved LINZ key</button>
+        <p>Get a key from <a href="https://data.linz.govt.nz/my/api/" target="_blank" rel="noopener noreferrer">LINZ Data Service</a>. Keys are excluded from point backups.</p>
       </div>
-      <button id="applyChart">Apply background</button>
-      <button id="forgetKey">Forget saved LINZ key</button>
-      <button id="showChart">Show selected chart area</button>
-      <label for="chartArea">Explore an area</label>
-      <select id="chartArea"><option value="nz">All New Zealand</option><option value="northland">Northland / Bay of Islands</option><option value="gulf" selected>Hauraki Gulf</option><option value="tauranga">Tauranga</option><option value="gisborne">Gisborne</option><option value="napier">Napier</option><option value="taranaki">New Plymouth</option><option value="wellington">Wellington / Cook Strait</option><option value="sounds">Marlborough Sounds</option><option value="nelson">Nelson / Tasman Bay</option><option value="westport">Westport</option><option value="lyttelton">Lyttelton / Banks Peninsula</option><option value="otago">Otago Harbour</option><option value="fiordland">Fiordland</option><option value="stewart">Stewart Island / Rakiura</option><option value="chatham">Chatham Islands</option><option value="auckland">Auckland Harbour</option><option value="kawau">Kawau Island</option><option value="waiheke">Waiheke Island</option><option value="barrier">Great Barrier Island</option><option value="mercury">Mercury Islands</option></select>
-      <button id="showArea">Show area</button>
-      <label><input id="seamarks" type="checkbox"> Show OpenSeaMap buoys and beacons</label>
-      <p>Community symbols need internet. Coverage is incomplete; symbols do not trigger spoken hazard alerts.</p>
+      <h3>Loading &amp; offline status</h3>
       <p id="chartStatus" role="status">Street map selected.</p>
       <p id="seamarkStatus" role="status">Seamarks off.</p>
-      <p>Offline chart downloads are not included in this version. A blank background offline does not mean clear water.</p>
+      <p id="offlineStatus" role="status">Checking offline app…</p>
     </details>
-    <section class="tools-section"><h3>Voice, demo &amp; backups</h3><div class="controls">
-      <button id="testVoice">Test voice</button>
-      <button id="demo">Demo run</button>
-      <button id="export">Back up points</button><button id="import">Restore points</button>
-      <input id="importFile" type="file" accept=".json,application/json" hidden>
-    </div></section>
-    <p id="offlineStatus" role="status">Checking offline app…</p>
-    <p class="reference-note">Helm 1.8.1 · Reference only. Not a substitute for official charts.</p>
+    <p class="reference-note">Helm 1.9 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
   </div>
 </dialog>
 
@@ -1220,7 +1236,12 @@ let seamarkLayer=null;
 function savedSetting(key){try{return localStorage.getItem(key);}catch(e){return null;}}
 function storeSetting(key,value){try{localStorage.setItem(key,value);return true;}catch(e){return false;}}
 function removeSetting(key){try{localStorage.removeItem(key);return true;}catch(e){return false;}}
-function updateChartForm(){document.getElementById('linzSettings').hidden=chartSource.value!=='linz';}
+function updateChartForm(){
+ const hidden=chartSource.value!=='linz';
+ document.getElementById('linzSettings').hidden=hidden;
+ document.getElementById('mapLinzControls').hidden=hidden;
+ document.getElementById('chartMode').value=chartId.value==='auto'?'auto':'manual';
+}
 chartSource.onchange=updateChartForm;
 function monitorTiles(layer,label,target){
   let failed=false;
@@ -1398,7 +1419,8 @@ document.getElementById('catalogueFile').onchange=async e=>{
 function applyChart(options={}){
  const isLinz=chartSource.value==='linz',key=linzKey.value.trim();
  if(isLinz&&!/^[A-Za-z0-9_-]{10,128}$/.test(key)){
-  chartStatus.textContent='Enter your LINZ Data Service access key before applying the chart.';return;
+  document.getElementById('advancedSettings').open=true;
+  linzKey.focus();chartStatus.textContent='Enter your LINZ Data Service access key before applying the chart.';return;
  }
  if(isLinz&&chartId.value!=='auto'&&!CHARTS.some(c=>c.id===chartId.value)){
   chartStatus.textContent='Select a supported chart.';return;
@@ -1421,7 +1443,17 @@ function applyChart(options={}){
  if(options.persist!==false)storeSetting('helm.chartSource',chartSource.value);
  document.getElementById('setupNotice').hidden=true;
 }
-document.getElementById('applyChart').onclick=()=>applyChart();
+document.getElementById('applyChart').onclick=()=>{applyChart();updateChartForm();};
+document.getElementById('applyManual').onclick=()=>{applyChart();updateChartForm();};
+chartId.onchange=()=>{document.getElementById('chartMode').value=chartId.value==='auto'?'auto':'manual';};
+document.getElementById('chartMode').onchange=e=>{
+ if(e.target.value==='auto'){chartId.value='auto';}
+ else{
+  if(chartId.value==='auto')chartId.value=CORE_CHARTS[0].id;
+  document.getElementById('advancedSettings').open=true;
+  document.getElementById('chartSearch').focus();
+ }
+};
 document.getElementById('forgetKey').onclick=()=>{
   if(!removeSetting('helm.linzKey')){alert('Could not remove the stored key. Clear this site’s data in Safari settings to remove it.');return;}
   catalogueRequest?.abort();catalogueRequest=null;document.getElementById('loadCatalogue').disabled=false;
@@ -1507,7 +1539,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.8.1'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.9'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
