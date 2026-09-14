@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.7">
+<html lang="en" data-helm-version="1.8">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Helm — 1.7</title>
+<title>Helm — 1.8</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -837,7 +837,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.7</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <header class="helm-header"><strong>Helm <small>1.8</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
     <p id="setupNotice" class="status" hidden></p>
     <section id="proximityAlert" hidden aria-label="Nearby saved point">
       <span id="alertKind"></span><strong id="alertName"></strong><span id="alertDistance"></span><span id="alertMore"></span>
@@ -867,11 +867,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <label for="chartSource">Background</label>
       <select id="chartSource"><option value="street">Street map (online)</option><option value="linz">LINZ reference chart (online)</option></select>
       <div id="linzSettings" hidden>
+        <label for="chartSearch">Find a chart</label>
+        <input id="chartSearch" type="search" placeholder="Place name or chart number">
         <label for="chartId">Chart</label>
-        <select id="chartId"><option value="auto">Automatic — Gulf and harbour charts</option></select>
-        <p>Automatic mode adds more detailed charts as you zoom in, with the Gulf overview underneath. Detail is limited by the original chart scale.</p>
+        <select id="chartId"><option value="auto">Automatic — available NZ charts</option></select>
+        <p>Automatic mode adds more detailed charts as you zoom in, with broader charts underneath. Detail is limited by the original chart scale.</p>
         <label for="linzKey">Your LINZ Data Service access key</label>
         <input id="linzKey" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" placeholder="Paste key here on this device">
+        <button id="loadCatalogue">Load / refresh NZ chart catalogue</button>
+        <p id="catalogueStatus" role="status">Nine Gulf charts included. Load the catalogue for nationwide chart selection.</p>
+        <details><summary>Import catalogue file instead</summary><p>If the online catalogue request fails, open the LINZ catalogue with the button below, save the XML file, then import it here. The XML may contain your key; keep it private. Helm saves only chart names, IDs and bounds.</p><button id="openCatalogue">Open LINZ catalogue</button><label for="catalogueFile">Import LINZ WMTS XML</label><input id="catalogueFile" type="file" accept=".xml,text/xml,application/xml"></details>
         <label><input id="rememberKey" type="checkbox"> Remember key on this device</label>
         <p>Obtain a web-services key from <a href="https://data.linz.govt.nz/my/api/" target="_blank" rel="noopener noreferrer">LINZ Data Service</a>. It is sent only to LINZ when loading charts, and is excluded from waypoint backups.</p>
         <p>These raster images are for reference only, may not reflect current Notices to Mariners, and are not for navigation. Each chart has a fixed footprint; blank areas are not evidence of clear water.</p>
@@ -880,7 +885,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <button id="forgetKey">Forget saved LINZ key</button>
       <button id="showChart">Show selected chart area</button>
       <label for="chartArea">Explore an area</label>
-      <select id="chartArea"><option value="gulf">Hauraki Gulf</option><option value="auckland">Auckland Harbour</option><option value="kawau">Kawau Island</option><option value="waiheke">Waiheke Island</option><option value="barrier">Great Barrier Island</option><option value="mercury">Mercury Islands</option></select>
+      <select id="chartArea"><option value="nz">All New Zealand</option><option value="northland">Northland / Bay of Islands</option><option value="gulf" selected>Hauraki Gulf</option><option value="tauranga">Tauranga</option><option value="gisborne">Gisborne</option><option value="napier">Napier</option><option value="taranaki">New Plymouth</option><option value="wellington">Wellington / Cook Strait</option><option value="sounds">Marlborough Sounds</option><option value="nelson">Nelson / Tasman Bay</option><option value="westport">Westport</option><option value="lyttelton">Lyttelton / Banks Peninsula</option><option value="otago">Otago Harbour</option><option value="fiordland">Fiordland</option><option value="stewart">Stewart Island / Rakiura</option><option value="chatham">Chatham Islands</option><option value="auckland">Auckland Harbour</option><option value="kawau">Kawau Island</option><option value="waiheke">Waiheke Island</option><option value="barrier">Great Barrier Island</option><option value="mercury">Mercury Islands</option></select>
       <button id="showArea">Show area</button>
       <label><input id="seamarks" type="checkbox"> Show OpenSeaMap buoys and beacons</label>
       <p>Community symbols need internet. Coverage is incomplete; symbols do not trigger spoken hazard alerts.</p>
@@ -895,7 +900,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <input id="importFile" type="file" accept=".json,application/json" hidden>
     </div></section>
     <p id="offlineStatus" role="status">Checking offline app…</p>
-    <p class="reference-note">Helm 1.7 · Reference only. Not a substitute for official charts.</p>
+    <p class="reference-note">Helm 1.8 · Reference only. Not a substitute for official charts.</p>
   </div>
 </dialog>
 
@@ -1226,7 +1231,7 @@ function monitorTiles(layer,label,target){
 }
 monitorTiles(backgroundLayer,'Street map',chartStatus);
 // Ordered from overview to detail; explicit z-index keeps overlaps predictable.
-const CHARTS=[
+const CORE_CHARTS=[
  {id:'51247',number:'53',name:'Hauraki Gulf — Bream Head to Slipper Island',scale:200000,zoom:0,center:[-36.45,175.2],view:9},
  {id:'51275',number:'522',name:'Bream Tail to Kawau and Great Barrier',scale:100000,zoom:10,center:[-36.15,175.05],view:10},
  {id:'51277',number:'532',name:'Approaches to Auckland',scale:100000,zoom:10,center:[-36.65,174.95],view:10},
@@ -1237,10 +1242,71 @@ const CHARTS=[
  {id:'51319',number:'5324',name:'Tamaki Strait and Waiheke Island',scale:40000,zoom:12,center:[-36.8,175.1],view:12},
  {id:'51317',number:'5322',name:'Auckland Harbour East',scale:18000,zoom:14,center:[-36.805,174.845],view:14}
 ];
-for(const chart of CHARTS){
- const option=document.createElement('option');option.value=chart.id;
- option.textContent='NZ '+chart.number+' — '+chart.name;chartId.appendChild(option);
+// The installed catalogue contains metadata only; never persist capabilities XML or URLs with keys.
+function longitudeSpan(bounds){return bounds[2]>=bounds[0]?bounds[2]-bounds[0]:bounds[2]+360-bounds[0];}
+function boundsOverlap(a,b){
+ if(a[3]<b[1]||a[1]>b[3])return false;
+ const aw=a[0],ae=aw+longitudeSpan(a),bw=b[0],be=bw+longitudeSpan(b);
+ return [-720,-360,0,360,720].some(shift=>aw<=be+shift&&ae>=bw+shift);
 }
+function validateCatalogue(records){
+ if(!Array.isArray(records)||!records.length||records.length>3000)throw Error('No usable chart records.');
+ return records.map(c=>{
+  if(!c||!/^\d{1,9}$/.test(c.id)||typeof c.number!=='string'||!/^\d+[A-Za-z]?$/.test(c.number)||typeof c.name!=='string'||!c.name.trim()||c.name.length>300||
+   !Array.isArray(c.bounds)||c.bounds.length!==4||!c.bounds.every(Number.isFinite)||Math.abs(c.bounds[0])>180||Math.abs(c.bounds[2])>180||c.bounds[1]<-85||c.bounds[3]>85||c.bounds[1]>=c.bounds[3]||longitudeSpan(c.bounds)<=0)
+   throw Error('Invalid chart metadata.');
+  const bounds=c.bounds.slice(),span=Math.max(longitudeSpan(bounds)*Math.cos((bounds[1]+bounds[3])*Math.PI/360),bounds[3]-bounds[1]);
+  const view=Math.max(3,Math.min(16,Math.round(Math.log2(360/(span*1.5)))));
+  const core=CORE_CHARTS.find(x=>x.id===c.id);
+  return {id:c.id,number:c.number,name:c.name.trim(),bounds,area:longitudeSpan(bounds)*(bounds[3]-bounds[1]),
+   center:[(bounds[1]+bounds[3])/2,((bounds[0]+longitudeSpan(bounds)/2+180)%360+360)%360-180],view:core?core.view:view,zoom:core?core.zoom:Math.max(0,view-1)};
+ });
+}
+function parseCatalogue(xml){
+ if(xml.length>30000000||/<!DOCTYPE|<!ENTITY/i.test(xml))throw Error('Unsupported catalogue file.');
+ const doc=new DOMParser().parseFromString(xml,'application/xml');
+ if(doc.getElementsByTagName('parsererror').length)throw Error('Invalid catalogue XML.');
+ const all=(node,name)=>Array.from(node.getElementsByTagNameNS('*',name));
+ const direct=(node,name)=>Array.from(node.childNodes).find(x=>x.nodeType===1&&x.localName===name);
+ const text=(node,name)=>direct(node,name)?.textContent.trim()||'';
+ const records=[],seen=new Set();
+ for(const layer of all(doc,'Layer')){
+  const title=text(layer,'Title'),match=title.match(/^Chart\s+NZ\s*(\d+[A-Za-z]?)\b[\s—–:-]*(.*)$/i);
+  const id=text(layer,'Identifier').match(/^(?:layer[-=])?(\d+)$/)?.[1];
+  if(!match||!id||seen.has(id)||!all(layer,'TileMatrixSet').some(x=>/3857/.test(x.textContent)))continue;
+  const box=direct(layer,'WGS84BoundingBox');if(!box)continue;
+  const lower=text(box,'LowerCorner').split(/\s+/).map(Number),upper=text(box,'UpperCorner').split(/\s+/).map(Number);
+  if(lower.length!==2||upper.length!==2)continue;
+  try{
+   const record=validateCatalogue([{id,number:match[1],name:match[2]||title,bounds:[lower[0],lower[1],upper[0],upper[1]]}])[0];
+   // Mainland NZ, Chathams, Kermadecs and subantarctic NZ islands; not the Antarctic/Pacific folio.
+   if(!boundsOverlap(record.bounds,[160,-56,-175,-28]))continue;
+   records.push(record);seen.add(id);
+  }catch(e){}
+ }
+ if(!records.length)throw Error('No NZ nautical charts with usable boundaries were found.');
+ return records;
+}
+let nationalCharts=[];
+try{const saved=JSON.parse(savedSetting('helm.nzCatalogue'));if(saved?.version===1)nationalCharts=validateCatalogue(saved.charts);}catch(e){}
+function mergedCharts(records){
+ const ids=new Set(records.map(c=>c.id));
+ return [...CORE_CHARTS.filter(c=>!ids.has(c.id)),...records].sort((a,b)=>(b.area||0)-(a.area||0));
+}
+let CHARTS=nationalCharts.length?mergedCharts(nationalCharts):CORE_CHARTS.slice();
+function populateCharts(){
+ const selected=chartId.value||'auto',query=document.getElementById('chartSearch').value.trim().toLowerCase();
+ chartId.innerHTML='';
+ const option=(value,label)=>{const el=document.createElement('option');el.value=value;el.textContent=label;chartId.appendChild(el);};
+ option('auto','Automatic — available NZ charts');
+ for(const chart of CHARTS){
+  const label='NZ '+chart.number+' — '+chart.name;
+  if(!query||label.toLowerCase().includes(query)||chart.id===selected)option(chart.id,label);
+ }
+ chartId.value=selected==='auto'||CHARTS.some(c=>c.id===selected)?selected:'auto';
+}
+populateCharts();document.getElementById('chartSearch').oninput=populateCharts;
+if(nationalCharts.length)document.getElementById('catalogueStatus').textContent=nationalCharts.length+' chart records restored from this device. Refresh online for catalogue changes.';
 const chartLayers=new Map();
 let appliedChart=null,appliedKey='';
 function reportCharts(){
@@ -1249,7 +1315,7 @@ function reportCharts(){
  const failed=entries.filter(x=>x.failed).map(x=>'NZ '+x.chart.number);
  const loading=entries.some(x=>x.loading);
  chartStatus.textContent=(appliedChart==='auto'?'Automatic charts':'Selected chart')+
- ' — enabled: '+entries.map(x=>'NZ '+x.chart.number).join(', ')+'. '+
+ ' — enabled: '+(entries.map(x=>'NZ '+x.chart.number).join(', ')||'none in this view; zoom out or load the NZ catalogue')+'. '+
  (failed.length?'Tiles unavailable for '+failed.join(', ')+'. Check connection and key. ':loading?'Loading… ':'Tile requests finished. ')+
  'Only charted footprints contain detail; the overview may remain visible between them.';
 }
@@ -1260,13 +1326,16 @@ function clearCharts(){
 }
 function refreshCharts(){
  if(!appliedChart)return;
- const desired=CHARTS.filter(c=>appliedChart==='auto'?map.getZoom()>=c.zoom:c.id===appliedChart);
+ const viewport=map.getBounds();
+ const bounds=[viewport.getWest(),viewport.getSouth(),viewport.getEast(),viewport.getNorth()];
+ const desired=CHARTS.filter(c=>appliedChart==='auto'?(map.getZoom()>=c.zoom&&(!nationalCharts.length||c.bounds)&&(!c.bounds||boundsOverlap(c.bounds,bounds))):c.id===appliedChart);
  const ids=new Set(desired.map(c=>c.id));
  for(const [id,entry] of chartLayers){if(!ids.has(id)){chartLayers.delete(id);map.removeLayer(entry.layer);}}
  for(const chart of desired){
   if(chartLayers.has(chart.id))continue;
   const layer=L.tileLayer('https://tiles-{s}.data-cdn.linz.govt.nz/services;key='+encodeURIComponent(appliedKey)+
    '/tiles/v4/layer='+chart.id+'/EPSG:3857/{z}/{x}/{y}.png',{
+    bounds:chart.bounds&&chart.bounds[0]<chart.bounds[2]?[[chart.bounds[1],chart.bounds[0]],[chart.bounds[3],chart.bounds[2]]]:undefined,
     maxZoom:18,subdomains:'abcd',zIndex:10+CHARTS.indexOf(chart),keepBuffer:1,
     attribution:'Crown copyright &copy; <a href="https://www.linz.govt.nz/">LINZ</a> · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> · Reference only'});
   const entry={chart,layer,failed:false,loading:true};chartLayers.set(chart.id,entry);
@@ -1279,6 +1348,45 @@ function refreshCharts(){
  reportCharts();
 }
 map.on('zoomend',refreshCharts);
+map.on('moveend',refreshCharts);
+let catalogueRequest=null;
+function catalogueURL(){
+ const key=linzKey.value.trim();
+ if(!/^[A-Za-z0-9_-]{10,128}$/.test(key))throw Error('Enter your LINZ key first.');
+ return 'https://data.linz.govt.nz/services;key='+encodeURIComponent(key)+'/wmts/?SERVICE=WMTS&REQUEST=GetCapabilities&VERSION=1.0.0';
+}
+function installCatalogue(records){
+ nationalCharts=validateCatalogue(records);CHARTS=mergedCharts(nationalCharts);
+ populateCharts();
+ // Rebuild layers so refreshed bounds and drawing order apply to the displayed chart.
+ for(const entry of chartLayers.values())map.removeLayer(entry.layer);chartLayers.clear();refreshCharts();
+ const saved=storeSetting('helm.nzCatalogue',JSON.stringify({version:1,charts:nationalCharts}));
+ document.getElementById('catalogueStatus').textContent=nationalCharts.length+' NZ-area chart records loaded. '+(saved?'Catalogue saved on this device. ':'Catalogue is available this session, but could not be saved. ')+
+ 'Choose Automatic, then Apply background. Chart images still need internet; catalogue bounds do not guarantee complete coverage.';
+}
+document.getElementById('loadCatalogue').onclick=async()=>{
+ const status=document.getElementById('catalogueStatus'),button=document.getElementById('loadCatalogue');
+ let url;try{url=catalogueURL();}catch(e){status.textContent=e.message;return;}
+ catalogueRequest?.abort();const request=new AbortController();catalogueRequest=request;
+ button.disabled=true;status.textContent='Loading LINZ chart catalogue…';
+ const timer=setTimeout(()=>request.abort(),30000);
+ try{
+  const response=await fetch(url,{signal:request.signal,credentials:'omit',referrerPolicy:'no-referrer'});
+  if(!response.ok)throw Error('Catalogue request failed.');
+  const xml=await response.text();if(request.signal.aborted)throw Error('Cancelled');
+  installCatalogue(parseCatalogue(xml));
+ }catch(e){if(catalogueRequest===request)status.textContent='Catalogue could not be loaded. Your existing charts are unchanged. Check internet and key, or use Import catalogue file instead.';}
+ finally{clearTimeout(timer);if(catalogueRequest===request){catalogueRequest=null;button.disabled=false;}}
+};
+document.getElementById('openCatalogue').onclick=()=>{
+ try{window.open(catalogueURL(),'_blank','noopener,noreferrer');}catch(e){document.getElementById('catalogueStatus').textContent=e.message;}
+};
+document.getElementById('catalogueFile').onchange=async e=>{
+ const file=e.target.files[0];e.target.value='';if(!file)return;
+ catalogueRequest?.abort();catalogueRequest=null;document.getElementById('loadCatalogue').disabled=false;
+ try{if(file.size>30000000)throw Error('File is too large.');installCatalogue(parseCatalogue(await file.text()));}
+ catch(e){document.getElementById('catalogueStatus').textContent='Catalogue not imported. '+e.message+' Existing charts are unchanged.';}
+};
 function applyChart(options={}){
  const isLinz=chartSource.value==='linz',key=linzKey.value.trim();
  if(isLinz&&!/^[A-Za-z0-9_-]{10,128}$/.test(key)){
@@ -1308,16 +1416,17 @@ function applyChart(options={}){
 document.getElementById('applyChart').onclick=()=>applyChart();
 document.getElementById('forgetKey').onclick=()=>{
   if(!removeSetting('helm.linzKey')){alert('Could not remove the stored key. Clear this site’s data in Safari settings to remove it.');return;}
+  catalogueRequest?.abort();catalogueRequest=null;document.getElementById('loadCatalogue').disabled=false;
   linzKey.value='';document.getElementById('rememberKey').checked=false;
   chartSource.value='street';updateChartForm();applyChart();
 };
 function showSelectedChart(){
  following=false;setFollow();
- const chart=CHARTS.find(c=>c.id===chartId.value)||CHARTS[0];
+ const chart=CHARTS.find(c=>c.id===chartId.value)||(nationalCharts.length?{center:[-41,173],view:5}:CORE_CHARTS[0]);
  map.setView(chart.center,chart.view);
 }
 document.getElementById('showChart').onclick=showSelectedChart;
-const AREAS={gulf:[-36.45,175.2,9],auckland:[-36.805,174.845,14],kawau:[-36.43,174.84,12],waiheke:[-36.8,175.1,12],barrier:[-36.2,175.42,12],mercury:[-36.64,175.82,12]};
+const AREAS={nz:[-41,173,5],northland:[-35.2,174.15,11],tauranga:[-37.65,176.17,12],gisborne:[-38.7,178.05,12],napier:[-39.48,176.92,12],taranaki:[-39.05,174.02,12],wellington:[-41.3,174.8,11],sounds:[-41.15,174.1,11],nelson:[-41.2,173.2,11],westport:[-41.75,171.6,12],lyttelton:[-43.65,172.75,11],otago:[-45.82,170.62,12],fiordland:[-45.3,166.9,9],stewart:[-46.95,168,10],chatham:[-43.9,-176.5,10],gulf:[-36.45,175.2,9],auckland:[-36.805,174.845,14],kawau:[-36.43,174.84,12],waiheke:[-36.8,175.1,12],barrier:[-36.2,175.42,12],mercury:[-36.64,175.82,12]};
 document.getElementById('showArea').onclick=()=>{
  const area=AREAS[document.getElementById('chartArea').value];if(!area)return;
  following=false;setFollow();map.setView([area[0],area[1]],area[2]);
@@ -1327,7 +1436,7 @@ document.getElementById('seamarks').onchange=e=>{
   if(seamarkLayer){map.removeLayer(seamarkLayer);seamarkLayer=null;}
   if(e.target.checked){
     seamarkLayer=L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{
-      maxZoom:18,maxNativeZoom:18,zIndex:100,attribution:'&copy; <a href="https://www.openseamap.org/">OpenSeaMap</a> contributors'});
+      maxZoom:18,maxNativeZoom:18,zIndex:10000,attribution:'&copy; <a href="https://www.openseamap.org/">OpenSeaMap</a> contributors'});
     monitorTiles(seamarkLayer,'Community seamarks',seamarkStatus);
     seamarkLayer.addTo(map);
   }else seamarkStatus.textContent='Seamarks off.';
@@ -1390,7 +1499,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.7'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.8'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
