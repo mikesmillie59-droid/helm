@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.5">
+<html lang="en" data-helm-version="1.6">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Helm — 1.5</title>
+<title>Helm — 1.6</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -718,7 +718,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     --orange:#F26A21;     /* hazards + the Start button */
     --green:#7BC47F;      /* waypoints + live GPS */
     --line:#4A565F;
-    --panel-w:340px;
+    --panel-w:300px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%;background:var(--slate);
@@ -786,10 +786,25 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   .boat{width:0;height:0}
   .boat svg{width:44px;height:44px;margin:-22px 0 0 -22px;transform-origin:center;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
 
+  .helm-header,.settings-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .helm-header strong{font-size:24px}.helm-header small{font-size:13px;color:var(--buff-dim)}
+  .helm-header button{min-height:44px;font-size:16px;padding:0 14px}
+  .readout{padding:16px}.readout .row{flex-wrap:wrap;font-size:15px;gap:4px 10px}
+  .readout .row b{overflow-wrap:anywhere;text-align:right}
+  .controls{padding:12px 16px}.controls button{font-size:16px;padding:0 10px}
+  .points-panel>summary{padding:16px;cursor:pointer;font-weight:600;min-height:48px}
+  #list{padding:0 16px 16px}#list h2{display:none}
+  .reference-note{font-size:12px;color:var(--buff-dim);padding:0 16px;line-height:1.5}
+  #setupNotice{margin:0;padding:12px 16px;background:#493d2d}
+  #settingsDialog{color:var(--buff);background:var(--slate);border:1px solid var(--line);border-radius:16px;padding:0;width:min(520px,calc(100% - 24px));max-height:90vh;max-height:90dvh;overflow:auto;overscroll-behavior:contain}
+  #settingsDialog::backdrop{background:rgba(0,0,0,.55)}
+  .settings-header{position:sticky;top:0;background:var(--slate);z-index:2}.settings-header h2{font-size:22px;margin:0}
+  .settings-header button{min-height:48px}.tools-section h3{font-size:17px;padding:0 20px}
+  .settings-body{padding-bottom:12px}
   /* ---------- Narrow screens (phone / portrait) ---------- */
   @media (max-width:820px){
     #app{grid-template-columns:1fr;grid-template-rows:1fr auto}
-    #app{grid-template-rows:minmax(240px,1fr) minmax(0,48vh)}
+    #app{grid-template-rows:minmax(220px,1fr) minmax(0,40vh)}
     #panel{border-left:0;border-top:1px solid var(--line);overflow-y:auto}
     #list{flex:none}
     .readout .big{font-size:40px}
@@ -813,6 +828,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </div>
 
   <aside id="panel">
+    <header class="helm-header"><strong>Helm <small>1.6</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <p id="setupNotice" class="status" hidden></p>
     <div class="readout">
       <div><span id="gps"></span><span id="gpsText">GPS off</span></div>
       <div class="big" id="sog">—<small>knots</small></div>
@@ -825,13 +842,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <button id="start" class="primary full">Start GPS</button>
       <button id="add">Add waypoint</button>
       <button id="follow" class="on">Follow boat</button>
-      <button id="testVoice">Test voice</button>
-      <button id="demo">Demo run</button>
-      <button id="export">Back up points</button><button id="import">Restore points</button>
-      <input id="importFile" type="file" accept=".json,application/json" hidden>
     </div>
-    <div id="list"></div>
-    <details class="chart-settings">
+    <details class="points-panel" open><summary>Waypoints &amp; hazards</summary><div id="list"></div></details>
+    <p class="reference-note">Reference only · Charts need internet</p>
+  </aside>
+</div>
+<dialog id="settingsDialog" aria-labelledby="settingsTitle">
+  <header class="settings-header"><h2 id="settingsTitle">Settings</h2><button id="closeSettings" autofocus>Done</button></header>
+  <div class="settings-body">
+    <details class="chart-settings" open>
       <summary>Charts &amp; offline status</summary>
       <label for="chartSource">Background</label>
       <select id="chartSource"><option value="street">Street map (online)</option><option value="linz">LINZ reference chart (online)</option></select>
@@ -857,10 +876,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <p id="seamarkStatus" role="status">Seamarks off.</p>
       <p>Offline chart downloads are not included in this version. A blank background offline does not mean clear water.</p>
     </details>
+    <section class="tools-section"><h3>Voice, demo &amp; backups</h3><div class="controls">
+      <button id="testVoice">Test voice</button>
+      <button id="demo">Demo run</button>
+      <button id="export">Back up points</button><button id="import">Restore points</button>
+      <input id="importFile" type="file" accept=".json,application/json" hidden>
+    </div></section>
     <p id="offlineStatus" role="status">Checking offline app…</p>
-    <p style="padding:0 20px;font-size:13px">Helm 1.5 · Reference only. Not a substitute for official charts. Maps require internet.</p>
-  </aside>
-</div>
+    <p class="reference-note">Helm 1.6 · Reference only. Not a substitute for official charts.</p>
+  </div>
+</dialog>
 
 <script>
 // ===================== 1. Map =====================
@@ -1199,7 +1224,7 @@ function refreshCharts(){
  reportCharts();
 }
 map.on('zoomend',refreshCharts);
-function applyChart(){
+function applyChart(options={}){
  const isLinz=chartSource.value==='linz',key=linzKey.value.trim();
  if(isLinz&&!/^[A-Za-z0-9_-]{10,128}$/.test(key)){
   chartStatus.textContent='Enter your LINZ Data Service access key before applying the chart.';return;
@@ -1211,7 +1236,7 @@ function applyChart(){
  if(backgroundLayer){map.removeLayer(backgroundLayer);backgroundLayer=null;}
  if(isLinz){
   appliedChart=chartId.value;appliedKey=key;
-  showSelectedChart();refreshCharts();
+  if(options.recenter!==false)showSelectedChart();refreshCharts();
   const remember=document.getElementById('rememberKey').checked;
   const saved=remember?storeSetting('helm.linzKey',key):removeSetting('helm.linzKey');
   if(!saved)alert('The chart can be used now, but the key preference could not be saved.');
@@ -1222,8 +1247,10 @@ function applyChart(){
   chartStatus.textContent='Street map — requesting tiles…';backgroundLayer.addTo(map);
  }
  storeSetting('helm.chartId',chartId.value);
+ if(options.persist!==false)storeSetting('helm.chartSource',chartSource.value);
+ document.getElementById('setupNotice').hidden=true;
 }
-document.getElementById('applyChart').onclick=applyChart;
+document.getElementById('applyChart').onclick=()=>applyChart();
 document.getElementById('forgetKey').onclick=()=>{
   if(!removeSetting('helm.linzKey')){alert('Could not remove the stored key. Clear this site’s data in Safari settings to remove it.');return;}
   linzKey.value='';document.getElementById('rememberKey').checked=false;
@@ -1241,6 +1268,7 @@ document.getElementById('showArea').onclick=()=>{
  following=false;setFollow();map.setView([area[0],area[1]],area[2]);
 };
 document.getElementById('seamarks').onchange=e=>{
+  storeSetting('helm.seamarks',e.target.checked?'true':'false');
   if(seamarkLayer){map.removeLayer(seamarkLayer);seamarkLayer=null;}
   if(e.target.checked){
     seamarkLayer=L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{
@@ -1254,7 +1282,41 @@ if(storedKey){linzKey.value=storedKey;document.getElementById('rememberKey').che
 const previousChart=savedSetting('helm.chartId');
 const storedChart=previousChart==='51545'?'51317':previousChart;
 if(storedChart==='auto'||CHARTS.some(c=>c.id===storedChart))chartId.value=storedChart;
-updateChartForm();
+// Restore only validated preferences. A missing key never triggers a LINZ request.
+function restorePreferences(){
+ const source=savedSetting('helm.chartSource');
+ chartSource.value=source==='linz'?'linz':'street';updateChartForm();
+ if(chartSource.value==='linz'){
+  if(/^[A-Za-z0-9_-]{10,128}$/.test(linzKey.value.trim()))applyChart({recenter:false,persist:false});
+  else{
+   const notice=document.getElementById('setupNotice');notice.hidden=false;
+   notice.textContent='Street map shown. Open Settings and enter your LINZ key to restore your chart.';
+   chartStatus.textContent='Your LINZ chart choice is remembered. Enter your key, then Apply background.';
+  }
+ }
+ try{
+  const view=JSON.parse(savedSetting('helm.mapView'));
+  if(view&&Number.isFinite(view.lat)&&Math.abs(view.lat)<=85&&Number.isFinite(view.lng)&&Math.abs(view.lng)<=180&&Number.isInteger(view.zoom)&&view.zoom>=1&&view.zoom<=18)
+   map.setView([view.lat,view.lng],view.zoom);
+ }catch(e){}
+ const seamarks=document.getElementById('seamarks');seamarks.checked=savedSetting('helm.seamarks')==='true';
+ seamarks.onchange({target:seamarks});
+}
+restorePreferences();
+map.on('moveend',()=>{
+ const center=map.getCenter(),zoom=map.getZoom();
+ if(Number.isFinite(center.lat)&&Math.abs(center.lat)<=85&&Number.isFinite(center.lng)&&Number.isInteger(zoom)&&zoom>=1&&zoom<=18)
+  storeSetting('helm.mapView',JSON.stringify({lat:center.lat,lng:((center.lng+180)%360+360)%360-180,zoom}));
+});
+const settingsDialog=document.getElementById('settingsDialog');
+document.getElementById('openSettings').onclick=()=>settingsDialog.showModal();
+document.getElementById('closeSettings').onclick=()=>settingsDialog.close();
+settingsDialog.addEventListener('close',()=>document.getElementById('openSettings').focus());
+// Area shortcuts also return to the map so the new view is immediately visible.
+for(const id of ['showArea','showChart']){
+ const action=document.getElementById(id).onclick;
+ document.getElementById(id).onclick=()=>{action();settingsDialog.close();};
+}
 
 // ===================== 7. Offline app (not offline charts) =====================
 const offlineStatus=document.getElementById('offlineStatus');
@@ -1273,7 +1335,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.5'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.6'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
