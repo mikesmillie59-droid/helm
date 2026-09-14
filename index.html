@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.4">
+<html lang="en" data-helm-version="1.5">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Helm — 1.4</title>
+<title>Helm — 1.5</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -837,16 +837,20 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <select id="chartSource"><option value="street">Street map (online)</option><option value="linz">LINZ reference chart (online)</option></select>
       <div id="linzSettings" hidden>
         <label for="chartId">Chart</label>
-        <select id="chartId"><option value="51277">NZ 532 — Approaches to Auckland</option><option value="51317">NZ 5322 — Auckland Harbour East</option></select>
+        <select id="chartId"><option value="auto">Automatic — Gulf and harbour charts</option></select>
+        <p>Automatic mode adds more detailed charts as you zoom in, with the Gulf overview underneath. Detail is limited by the original chart scale.</p>
         <label for="linzKey">Your LINZ Data Service access key</label>
         <input id="linzKey" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" placeholder="Paste key here on this device">
         <label><input id="rememberKey" type="checkbox"> Remember key on this device</label>
         <p>Obtain a web-services key from <a href="https://data.linz.govt.nz/my/api/" target="_blank" rel="noopener noreferrer">LINZ Data Service</a>. It is sent only to LINZ when loading charts, and is excluded from waypoint backups.</p>
-        <p>These raster images are for reference only, may not reflect current Notices to Mariners, and are not for navigation. Coverage is limited to the selected chart.</p>
+        <p>These raster images are for reference only, may not reflect current Notices to Mariners, and are not for navigation. Each chart has a fixed footprint; blank areas are not evidence of clear water.</p>
       </div>
       <button id="applyChart">Apply background</button>
       <button id="forgetKey">Forget saved LINZ key</button>
       <button id="showChart">Show selected chart area</button>
+      <label for="chartArea">Explore an area</label>
+      <select id="chartArea"><option value="gulf">Hauraki Gulf</option><option value="auckland">Auckland Harbour</option><option value="kawau">Kawau Island</option><option value="waiheke">Waiheke Island</option><option value="barrier">Great Barrier Island</option><option value="mercury">Mercury Islands</option></select>
+      <button id="showArea">Show area</button>
       <label><input id="seamarks" type="checkbox"> Show OpenSeaMap buoys and beacons</label>
       <p>Community symbols need internet. Coverage is incomplete; symbols do not trigger spoken hazard alerts.</p>
       <p id="chartStatus" role="status">Street map selected.</p>
@@ -854,7 +858,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <p>Offline chart downloads are not included in this version. A blank background offline does not mean clear water.</p>
     </details>
     <p id="offlineStatus" role="status">Checking offline app…</p>
-    <p style="padding:0 20px;font-size:13px">Helm 1.4 · Reference only. Not a substitute for official charts. Maps require internet.</p>
+    <p style="padding:0 20px;font-size:13px">Helm 1.5 · Reference only. Not a substitute for official charts. Maps require internet.</p>
   </aside>
 </div>
 
@@ -1135,38 +1139,89 @@ function updateChartForm(){document.getElementById('linzSettings').hidden=chartS
 chartSource.onchange=updateChartForm;
 function monitorTiles(layer,label,target){
   let failed=false;
-  layer.on('loading',()=>{failed=false;target.textContent=label+' — loading…';});
-  layer.on('tileerror',()=>{failed=true;target.textContent=label+' — tiles unavailable. Check connection, access key and chart coverage.';});
-  layer.on('load',()=>{if(!failed)target.textContent=label+' — tile requests finished. Coverage may be blank outside the chart.';});
+  const current=()=>target===chartStatus?backgroundLayer===layer:seamarkLayer===layer;
+  layer.on('loading',()=>{if(current()){failed=false;target.textContent=label+' — loading…';}});
+  layer.on('tileerror',()=>{if(current()){failed=true;target.textContent=label+' — tiles unavailable. Check connection, access key and chart coverage.';}});
+  layer.on('load',()=>{if(current()&&!failed)target.textContent=label+' — tile requests finished. Coverage may be blank outside the chart.';});
 }
 monitorTiles(backgroundLayer,'Street map',chartStatus);
+// Ordered from overview to detail; explicit z-index keeps overlaps predictable.
+const CHARTS=[
+ {id:'51247',number:'53',name:'Hauraki Gulf — Bream Head to Slipper Island',scale:200000,zoom:0,center:[-36.45,175.2],view:9},
+ {id:'51275',number:'522',name:'Bream Tail to Kawau and Great Barrier',scale:100000,zoom:10,center:[-36.15,175.05],view:10},
+ {id:'51277',number:'532',name:'Approaches to Auckland',scale:100000,zoom:10,center:[-36.65,174.95],view:10},
+ {id:'51311',number:'5222',name:'Great Barrier Island',scale:50000,zoom:12,center:[-36.2,175.42],view:12},
+ {id:'51315',number:'5318',name:'Great Mercury Island to Otara Bay',scale:50000,zoom:12,center:[-36.7,175.82],view:12},
+ {id:'51314',number:'5227',name:'Goat Island to Waiwera River — Kawau',scale:40000,zoom:12,center:[-36.43,174.84],view:12},
+ {id:'51316',number:'5321',name:'Mahurangi Harbour to Rangitoto Island',scale:40000,zoom:12,center:[-36.65,174.8],view:12},
+ {id:'51319',number:'5324',name:'Tamaki Strait and Waiheke Island',scale:40000,zoom:12,center:[-36.8,175.1],view:12},
+ {id:'51317',number:'5322',name:'Auckland Harbour East',scale:18000,zoom:14,center:[-36.805,174.845],view:14}
+];
+for(const chart of CHARTS){
+ const option=document.createElement('option');option.value=chart.id;
+ option.textContent='NZ '+chart.number+' — '+chart.name;chartId.appendChild(option);
+}
+const chartLayers=new Map();
+let appliedChart=null,appliedKey='';
+function reportCharts(){
+ if(!appliedChart)return;
+ const entries=[...chartLayers.values()];
+ const failed=entries.filter(x=>x.failed).map(x=>'NZ '+x.chart.number);
+ const loading=entries.some(x=>x.loading);
+ chartStatus.textContent=(appliedChart==='auto'?'Automatic charts':'Selected chart')+
+ ' — enabled: '+entries.map(x=>'NZ '+x.chart.number).join(', ')+'. '+
+ (failed.length?'Tiles unavailable for '+failed.join(', ')+'. Check connection and key. ':loading?'Loading… ':'Tile requests finished. ')+
+ 'Only charted footprints contain detail; the overview may remain visible between them.';
+}
+function clearCharts(){
+ appliedChart=null;appliedKey='';
+ for(const entry of chartLayers.values())map.removeLayer(entry.layer);
+ chartLayers.clear();
+}
+function refreshCharts(){
+ if(!appliedChart)return;
+ const desired=CHARTS.filter(c=>appliedChart==='auto'?map.getZoom()>=c.zoom:c.id===appliedChart);
+ const ids=new Set(desired.map(c=>c.id));
+ for(const [id,entry] of chartLayers){if(!ids.has(id)){chartLayers.delete(id);map.removeLayer(entry.layer);}}
+ for(const chart of desired){
+  if(chartLayers.has(chart.id))continue;
+  const layer=L.tileLayer('https://tiles-{s}.data-cdn.linz.govt.nz/services;key='+encodeURIComponent(appliedKey)+
+   '/tiles/v4/layer='+chart.id+'/EPSG:3857/{z}/{x}/{y}.png',{
+    maxZoom:18,subdomains:'abcd',zIndex:10+CHARTS.indexOf(chart),keepBuffer:1,
+    attribution:'Crown copyright &copy; <a href="https://www.linz.govt.nz/">LINZ</a> · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> · Reference only'});
+  const entry={chart,layer,failed:false,loading:true};chartLayers.set(chart.id,entry);
+  const current=()=>chartLayers.get(chart.id)===entry;
+  layer.on('loading',()=>{if(current()){entry.loading=true;entry.failed=false;reportCharts();}});
+  layer.on('tileerror',()=>{if(current()){entry.failed=true;reportCharts();}});
+  layer.on('load',()=>{if(current()){entry.loading=false;reportCharts();}});
+  layer.addTo(map);
+ }
+ reportCharts();
+}
+map.on('zoomend',refreshCharts);
 function applyChart(){
-  const isLinz=chartSource.value==='linz';
-  const key=linzKey.value.trim();
-  if(isLinz&&!/^[A-Za-z0-9_-]{10,128}$/.test(key)){
-    chartStatus.textContent='Enter your LINZ Data Service access key before applying the chart.';return;
-  }
-  if(isLinz&&!['51277','51317'].includes(chartId.value)){
-    chartStatus.textContent='Select a supported chart.';return;
-  }
-  const label=isLinz?'LINZ '+(chartId.value==='51277'?'NZ 532':'NZ 5322')+' reference chart':'Street map';
-  const url=isLinz
-    ?'https://tiles-{s}.data-cdn.linz.govt.nz/services;key='+encodeURIComponent(key)+'/tiles/v4/layer='+chartId.value+'/EPSG:3857/{z}/{x}/{y}.png'
-    :'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-  const next=L.tileLayer(url,{maxZoom:18,subdomains:'abcd',
-    attribution:isLinz?'Crown copyright &copy; <a href="https://www.linz.govt.nz/">LINZ</a> · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> · Reference only'
-      :'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'});
-  monitorTiles(next,label,chartStatus);
-  if(backgroundLayer)map.removeLayer(backgroundLayer);
-  backgroundLayer=next;chartStatus.textContent=label+' — requesting tiles…';next.addTo(map);
-  if(seamarkLayer)seamarkLayer.bringToFront();
-  if(isLinz){
-    showSelectedChart();
-    const remember=document.getElementById('rememberKey').checked;
-    const saved=remember?storeSetting('helm.linzKey',key):removeSetting('helm.linzKey');
-    if(!saved)alert('The chart can be used now, but the key preference could not be saved.');
-  }
-  storeSetting('helm.chartId',chartId.value);
+ const isLinz=chartSource.value==='linz',key=linzKey.value.trim();
+ if(isLinz&&!/^[A-Za-z0-9_-]{10,128}$/.test(key)){
+  chartStatus.textContent='Enter your LINZ Data Service access key before applying the chart.';return;
+ }
+ if(isLinz&&chartId.value!=='auto'&&!CHARTS.some(c=>c.id===chartId.value)){
+  chartStatus.textContent='Select a supported chart.';return;
+ }
+ clearCharts();
+ if(backgroundLayer){map.removeLayer(backgroundLayer);backgroundLayer=null;}
+ if(isLinz){
+  appliedChart=chartId.value;appliedKey=key;
+  showSelectedChart();refreshCharts();
+  const remember=document.getElementById('rememberKey').checked;
+  const saved=remember?storeSetting('helm.linzKey',key):removeSetting('helm.linzKey');
+  if(!saved)alert('The chart can be used now, but the key preference could not be saved.');
+ }else{
+  backgroundLayer=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+   maxZoom:18,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'});
+  monitorTiles(backgroundLayer,'Street map',chartStatus);
+  chartStatus.textContent='Street map — requesting tiles…';backgroundLayer.addTo(map);
+ }
+ storeSetting('helm.chartId',chartId.value);
 }
 document.getElementById('applyChart').onclick=applyChart;
 document.getElementById('forgetKey').onclick=()=>{
@@ -1175,16 +1230,21 @@ document.getElementById('forgetKey').onclick=()=>{
   chartSource.value='street';updateChartForm();applyChart();
 };
 function showSelectedChart(){
-  following=false;setFollow();
-  if(chartId.value==='51317')map.setView([-36.805,174.845],12);
-  else map.setView([-36.65,174.95],10);
+ following=false;setFollow();
+ const chart=CHARTS.find(c=>c.id===chartId.value)||CHARTS[0];
+ map.setView(chart.center,chart.view);
 }
 document.getElementById('showChart').onclick=showSelectedChart;
+const AREAS={gulf:[-36.45,175.2,9],auckland:[-36.805,174.845,14],kawau:[-36.43,174.84,12],waiheke:[-36.8,175.1,12],barrier:[-36.2,175.42,12],mercury:[-36.64,175.82,12]};
+document.getElementById('showArea').onclick=()=>{
+ const area=AREAS[document.getElementById('chartArea').value];if(!area)return;
+ following=false;setFollow();map.setView([area[0],area[1]],area[2]);
+};
 document.getElementById('seamarks').onchange=e=>{
   if(seamarkLayer){map.removeLayer(seamarkLayer);seamarkLayer=null;}
   if(e.target.checked){
     seamarkLayer=L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{
-      maxZoom:18,maxNativeZoom:18,attribution:'&copy; <a href="https://www.openseamap.org/">OpenSeaMap</a> contributors'});
+      maxZoom:18,maxNativeZoom:18,zIndex:100,attribution:'&copy; <a href="https://www.openseamap.org/">OpenSeaMap</a> contributors'});
     monitorTiles(seamarkLayer,'Community seamarks',seamarkStatus);
     seamarkLayer.addTo(map);
   }else seamarkStatus.textContent='Seamarks off.';
@@ -1193,7 +1253,7 @@ const storedKey=savedSetting('helm.linzKey');
 if(storedKey){linzKey.value=storedKey;document.getElementById('rememberKey').checked=true;}
 const previousChart=savedSetting('helm.chartId');
 const storedChart=previousChart==='51545'?'51317':previousChart;
-if(['51277','51317'].includes(storedChart))chartId.value=storedChart;
+if(storedChart==='auto'||CHARTS.some(c=>c.id===storedChart))chartId.value=storedChart;
 updateChartForm();
 
 // ===================== 7. Offline app (not offline charts) =====================
@@ -1213,7 +1273,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.4'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.5'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
