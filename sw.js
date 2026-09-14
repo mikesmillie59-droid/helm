@@ -1,7 +1,7 @@
 'use strict';
 // Offline fix 1.2.1: bypass HTTP cache and reject outdated app HTML.
 // Cache only the self-contained app, never third-party map/chart tiles.
-const VERSION='1.6';
+const VERSION='1.7';
 const SCOPE=new URL(self.registration.scope);
 const PREFIX='helm-shell-'+SCOPE.pathname+'-';
 const CACHE=PREFIX+VERSION;

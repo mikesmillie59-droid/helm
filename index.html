@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.6">
+<html lang="en" data-helm-version="1.7">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Helm — 1.6</title>
+<title>Helm — 1.7</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -769,15 +769,22 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   .empty{padding:18px 0;color:var(--buff-dim);font-size:17px;line-height:1.45}
 
   /* ---------- Add-waypoint sheet ---------- */
-  #sheet{display:none;position:absolute;left:20px;bottom:20px;width:min(380px,calc(100% - 40px));
-    background:var(--slate);border:1px solid var(--line);border-radius:14px;padding:18px;z-index:1000;
-    box-shadow:0 12px 40px rgba(0,0,0,.35)}
-  #sheet.open{display:block}
+  #sheet{color:var(--buff);background:var(--slate);border:1px solid var(--line);border-radius:14px;padding:18px;
+    width:min(420px,calc(100% - 24px));max-height:90dvh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+  #sheet::backdrop{background:rgba(0,0,0,.45)}
   #sheet h3{margin:0 0 12px;font-size:20px}
   #sheet .field{margin-bottom:12px}
   #sheet label{display:block;font-size:15px;color:var(--buff-dim);margin-bottom:6px}
-  #sheet .actions{display:flex;gap:10px;margin-top:6px}
-  #sheet .actions button{flex:1}
+  #sheet .actions{display:flex;gap:10px;margin-top:12px}
+  #sheet .actions button{flex:1;padding:0 10px}
+  #wpDelete{width:100%;margin-top:16px;border:1px solid var(--orange);color:var(--orange)}
+  #wpCoordinates{font-size:14px;color:var(--buff-dim)}
+  .point-icon{background:transparent;border:0}.point-icon svg{width:32px;height:32px;filter:drop-shadow(0 1px 3px #222)}
+  #proximityAlert{padding:14px 16px;margin:0 12px 12px;border:2px solid var(--green);border-radius:10px;background:#253d32}
+  #proximityAlert.hazard{border-color:var(--orange);background:#4a3024}
+  #proximityAlert strong,#proximityAlert span{display:block;overflow-wrap:anywhere}
+  #alertKind{font-size:14px;font-weight:700;margin-bottom:5px}#alertName{font-size:20px}#alertDistance{font-size:18px;margin-top:5px}
+  #alertMore{font-size:13px;margin-top:6px}
   #hint{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:1000;background:var(--orange);
     color:#1a1a1a;padding:12px 18px;border-radius:10px;font-size:18px;font-weight:600;display:none}
   #hint.show{display:block}
@@ -816,8 +823,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   <div id="map"></div>
   <div id="hint">Tap the map where you want the waypoint</div>
 
-  <div id="sheet">
-    <h3>New waypoint</h3>
+  <dialog id="sheet" aria-labelledby="pointTitle">
+    <h3 id="pointTitle">New waypoint</h3>
+    <p id="wpCoordinates"></p>
     <div class="field"><label for="wpName">Name (this is what gets spoken)</label>
       <input id="wpName" placeholder="e.g. Rocks off Rakino"></div>
     <div class="field"><label for="wpType">Type</label>
@@ -825,11 +833,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <div class="field"><label for="wpRadius">Alert when within (metres)</label>
       <input id="wpRadius" type="number" inputmode="numeric" value="200"></div>
     <div class="actions"><button id="wpCancel">Cancel</button><button id="wpSave" class="primary">Save waypoint</button></div>
-  </div>
+    <button id="wpDelete" hidden>Delete point</button>
+  </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.6</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <header class="helm-header"><strong>Helm <small>1.7</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
     <p id="setupNotice" class="status" hidden></p>
+    <section id="proximityAlert" hidden aria-label="Nearby saved point">
+      <span id="alertKind"></span><strong id="alertName"></strong><span id="alertDistance"></span><span id="alertMore"></span>
+    </section>
     <div class="readout">
       <div><span id="gps"></span><span id="gpsText">GPS off</span></div>
       <div class="big" id="sog">—<small>knots</small></div>
@@ -883,7 +895,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <input id="importFile" type="file" accept=".json,application/json" hidden>
     </div></section>
     <p id="offlineStatus" role="status">Checking offline app…</p>
-    <p class="reference-note">Helm 1.6 · Reference only. Not a substitute for official charts.</p>
+    <p class="reference-note">Helm 1.7 · Reference only. Not a substitute for official charts.</p>
   </div>
 </dialog>
 
@@ -927,7 +939,7 @@ document.getElementById('importFile').onchange=async e=>{
     if(file.size>5000000)throw Error('Backup exceeds 5 MB.');
     const data=JSON.parse(await file.text()),points=cleanPoints(Array.isArray(data)?data:data.points);
     if(!confirm('Restore '+points.length+' points? This replaces your current '+waypoints.length+' points. Back up first to keep them.'))return;
-    if(save(points)){clearSpeech();waypoints=points;drawWaypoints();}
+    if(save(points)){closePointEditor();waypoints=points;drawWaypoints();refreshPointAlerts();}
   }catch(err){alert('Backup not restored. '+err.message);}
 };
 const wpLayer = L.layerGroup().addTo(map);
@@ -935,10 +947,12 @@ const wpLayer = L.layerGroup().addTo(map);
 function drawWaypoints(){
   wpLayer.clearLayers();
   waypoints.forEach(w=>{
-    const colour = w.type==='hazard' ? '#F26A21' : '#3E9B45';
-    L.circle([w.lat,w.lng],{radius:w.radius,color:colour,weight:1.5,fillOpacity:.08}).addTo(wpLayer);
-    L.circleMarker([w.lat,w.lng],{radius:8,color:'#fff',weight:2,fillColor:colour,fillOpacity:1})
-      .bindTooltip(esc(w.name),{permanent:true,direction:'top',offset:[0,-8]}).addTo(wpLayer);
+    const hazard=w.type==='hazard',colour=hazard?'#F26A21':'#3E9B45';
+    L.circle([w.lat,w.lng],{radius:w.radius,color:colour,weight:1.5,fillOpacity:.08,interactive:false}).addTo(wpLayer);
+    const shape=hazard?'<path d="M16 2 L30 29 H2 Z" fill="#F26A21" stroke="white" stroke-width="2"/><text x="16" y="24" text-anchor="middle" font-size="21" font-weight="bold" fill="#1a1a1a">!</text>':'<circle cx="16" cy="16" r="11" fill="#3E9B45" stroke="white" stroke-width="3"/>';
+    L.marker([w.lat,w.lng],{icon:L.divIcon({className:'point-icon',html:'<svg viewBox="0 0 32 32" aria-hidden="true">'+shape+'</svg>',iconSize:[32,32],iconAnchor:[16,16]}),
+      title:(hazard?'Hazard: ':'Waypoint: ')+w.name+' — edit point',alt:(hazard?'Hazard: ':'Waypoint: ')+w.name,keyboard:true,bubblingMouseEvents:false})
+      .bindTooltip(esc(w.name),{permanent:true,direction:'top',offset:[0,-16]}).on('click',()=>{if(!placing)editPoint(w);}).addTo(wpLayer);
   });
   renderList();
 }
@@ -954,11 +968,9 @@ function renderList(){
       <div class="dot"></div>
       <div><div class="name">${esc(w.name)}</div>
         <div class="meta">${w.type==='hazard'?'Hazard':'Waypoint'} · alert at ${w.radius} m · <span class="dist" data-i="${i}">—</span></div></div>
-      <button data-del="${i}">Remove</button>
+      <button data-edit="${i}">Edit</button>
     </div>`).join('');
-  el.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
-    const i=+b.dataset.del; if(confirm('Remove "'+waypoints[i].name+'"?')){const next=waypoints.filter((_,n)=>n!==i);if(save(next)){clearSpeech();waypoints=next;drawWaypoints();}}
-  });
+  el.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editPoint(waypoints[+b.dataset.edit]));
   el.querySelectorAll('.wp').forEach(r=>r.onclick=e=>{
     if(e.target.tagName==='BUTTON')return;
     const w=waypoints[+r.dataset.i]; following=false; setFollow(); map.setView([w.lat,w.lng],15);
@@ -966,26 +978,57 @@ function renderList(){
 }
 const esc = s => s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-// --- Adding a waypoint: press button, tap map, fill sheet ---
-let placing=false, pending=null;
-const sheet=document.getElementById('sheet'), hint=document.getElementById('hint');
-document.getElementById('add').onclick=()=>{placing=true;hint.classList.add('show');};
+// Point editor uses the original object, so an old selection cannot edit a different point.
+let placing=false,pending=null,editingPoint=null;
+const sheet=document.getElementById('sheet'),hint=document.getElementById('hint');
+function stopPlacing(){placing=false;hint.classList.remove('show');document.getElementById('add').textContent='Add waypoint';}
+function closePointEditor(){sheet.close();pending=null;editingPoint=null;}
+function openPointEditor(point=null){
+ editingPoint=point;
+ document.getElementById('pointTitle').textContent=point?'Edit saved point':'New waypoint';
+ document.getElementById('wpName').value=point?point.name:'';
+ document.getElementById('wpType').value=point?point.type:'waypoint';
+ document.getElementById('wpRadius').value=point?point.radius:200;
+ document.getElementById('wpCoordinates').textContent=fmtPos(pending.lat,pending.lng);
+ document.getElementById('wpSave').textContent=point?'Save changes':'Save point';
+ document.getElementById('wpDelete').hidden=!point;
+ sheet.showModal();document.getElementById('wpName').focus();
+}
+function editPoint(point){
+ if(!point||!waypoints.includes(point))return;
+ stopPlacing();pending={lat:point.lat,lng:point.lng};openPointEditor(point);
+}
+document.getElementById('add').onclick=()=>{
+ if(placing){stopPlacing();return;}
+ placing=true;hint.classList.add('show');document.getElementById('add').textContent='Cancel placement';
+};
 map.on('click',e=>{
-  if(!placing)return;
-  placing=false; hint.classList.remove('show'); pending=e.latlng;
-  document.getElementById('wpName').value=''; sheet.classList.add('open');
-  document.getElementById('wpName').focus();
+ if(!placing)return;stopPlacing();pending=e.latlng;openPointEditor();
 });
-document.getElementById('wpCancel').onclick=()=>sheet.classList.remove('open');
+sheet.addEventListener('cancel',()=>{pending=null;editingPoint=null;});
+document.getElementById('wpCancel').onclick=closePointEditor;
+function refreshPointAlerts(){
+ clearSpeech();
+ if(lastFix)checkAlerts(lastFix.lat,lastFix.lng,false);
+ else document.getElementById('proximityAlert').hidden=true;
+}
 document.getElementById('wpSave').onclick=()=>{
-  const name=document.getElementById('wpName').value.trim();
-  if(!name){alert('Give it a name — that is what gets spoken.');return;}
-  if(name.length>200){alert('Use a name of 200 characters or fewer.');return;}
-  const radius=Number(document.getElementById('wpRadius').value);
-  if(!Number.isFinite(radius)||radius<20||radius>100000){alert('Choose a radius between 20 and 100,000 metres.');return;}
-  const next=[...waypoints,{name, type:document.getElementById('wpType').value,
-    radius,lat:pending.lat,lng:pending.lng,inside:false}];
-  if(save(next)){waypoints=next;drawWaypoints();sheet.classList.remove('open');}
+ if(!pending)return;
+ const name=document.getElementById('wpName').value.trim(),type=document.getElementById('wpType').value;
+ const radius=Number(document.getElementById('wpRadius').value);
+ if(!name||name.length>200){alert('Use a name of 1 to 200 characters.');return;}
+ if(!['waypoint','hazard'].includes(type)||!Number.isFinite(radius)||radius<20||radius>100000){alert('Choose a point type and a warning distance between 20 and 100,000 metres.');return;}
+ const index=editingPoint?waypoints.indexOf(editingPoint):-1;
+ if(editingPoint&&index<0){alert('This point has changed. Open it again.');closePointEditor();return;}
+ const point={name,type,radius,lat:pending.lat,lng:pending.lng,inside:false};
+ const next=editingPoint?waypoints.map((w,i)=>i===index?point:w):[...waypoints,point];
+ if(save(next)){waypoints=next;closePointEditor();drawWaypoints();refreshPointAlerts();}
+};
+document.getElementById('wpDelete').onclick=()=>{
+ if(!editingPoint||!waypoints.includes(editingPoint))return;
+ if(!confirm('Delete "'+editingPoint.name+'"?'))return;
+ const next=waypoints.filter(w=>w!==editingPoint);
+ if(save(next)){waypoints=next;closePointEditor();drawWaypoints();refreshPointAlerts();}
 };
 
 // ===================== 3. Voice =====================
@@ -1034,19 +1077,30 @@ function distance(a,b,c,d){ // metres between two lat/lng points
 }
 
 // --- The alert logic: speak once when entering a radius, reset once well clear of it ---
-function checkAlerts(lat,lng){
+function checkAlerts(lat,lng,notify=true){
   let nearest=null;
+  const nearby=[];
   const alerts=[];
   waypoints.forEach((w,i)=>{
     const d=distance(lat,lng,w.lat,w.lng);
     const el=document.querySelector(`.dist[data-i="${i}"]`); if(el)el.textContent=fmtDist(d);
     if(!nearest||d<nearest.d)nearest={w,d};
+    if(d<=w.radius)nearby.push({w,d});
     if(d<=w.radius&&!w.inside){
       w.inside=true;
       alerts.push({hazard:w.type==='hazard',text:(w.type==='hazard'?'Caution. Hazard. ':'Approaching ')+w.name+', '+Math.round(d/10)*10+' metres.'});
     } else if(d>w.radius*1.3&&w.inside){ w.inside=false; }   // 30% buffer so it doesn't re-trigger on the edge
   });
-  alerts.sort((a,b)=>Number(b.hazard)-Number(a.hazard)).forEach(a=>speak(a.text));
+  if(notify)alerts.sort((a,b)=>Number(b.hazard)-Number(a.hazard)).forEach(a=>speak(a.text));
+  nearby.sort((a,b)=>Number(b.w.type==='hazard')-Number(a.w.type==='hazard')||a.d-b.d);
+  const banner=document.getElementById('proximityAlert');banner.hidden=!nearby.length;
+  if(nearby.length){
+   const {w,d}=nearby[0],hazard=w.type==='hazard';banner.classList.toggle('hazard',hazard);
+   document.getElementById('alertKind').textContent=(mode==='demo'?'DEMO · ':'')+(hazard?'CAUTION · SAVED HAZARD':'NEARBY WAYPOINT');
+   document.getElementById('alertName').textContent=w.name;
+   document.getElementById('alertDistance').textContent=fmtDist(d)+' away · warning at '+w.radius+' m';
+   document.getElementById('alertMore').textContent=nearby.length>1?'Also within range of '+(nearby.length-1)+' saved point(s).':'';
+  }
   document.getElementById('nearest').textContent=nearest?nearest.w.name+' '+fmtDist(nearest.d):'—';
 }
 const fmtDist=d=>d<1000?Math.round(d)+' m':(d/1852).toFixed(2)+' nm';
@@ -1056,6 +1110,7 @@ const startBtn=document.getElementById('start');
 let mode='off', session=0, lastFixTime=0, gpsStarted=0, staleWarned=false, wakeLock=null;
 function resetAlerts(){waypoints.forEach(w=>w.inside=false);}
 function clearReadouts(){
+  document.getElementById('proximityAlert').hidden=true;
   lastFix=null;
   document.getElementById('sog').innerHTML='—<small>knots</small>';
   ['cog','pos','acc','nearest'].forEach(id=>document.getElementById(id).textContent='—');
@@ -1140,7 +1195,7 @@ document.getElementById('demo').onclick=()=>{
   demoTimer=setInterval(()=>{
     const t=waypoints[idx]; if(!t){stopDemo();speak('Demo run finished.');return;}
     const d=distance(pos.lat,pos.lng,t.lat,t.lng), step=4.1; // metres per tick ≈ 8 kn at 1 tick/sec
-    if(d<step){idx++;return;}
+    if(d<step){pos={lat:t.lat,lng:t.lng};onFix(pos.lat,pos.lng,0,null,5);idx++;return;}
     const f=step/d; pos={lat:pos.lat+(t.lat-pos.lat)*f,lng:pos.lng+(t.lng-pos.lng)*f};
     const hdg=(Math.atan2((t.lng-pos.lng)*Math.cos(pos.lat*Math.PI/180),t.lat-pos.lat)*180/Math.PI+360)%360;
     setGps(false,'Demo — simulated position');
@@ -1335,7 +1390,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.6'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.7'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
