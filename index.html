@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.9.1">
+<html lang="en" data-helm-version="1.10.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Helm — 1.9.1</title>
+<title>Helm — 1.10.0</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -734,6 +734,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   input,select{font:inherit;font-size:18px;min-height:56px;border-radius:10px;border:1px solid var(--line);
     background:#1F262B;color:var(--buff);padding:0 14px;width:100%}
 
+  [hidden]{display:none!important}
+  .main-tabs{display:flex;gap:8px;padding:10px 16px}
+  .main-tabs button{flex:1;font-size:16px;padding:8px}
+  #panel.anchor-view .navigation-only{display:none}
+  button:disabled{opacity:.5;cursor:default}
+  #anchorPanel{padding:0 20px 18px}
+  #anchorPanel button{width:100%;margin-top:10px}
+  #anchorPanel label{display:block;margin:12px 0 6px}
+  #anchorBanner{padding:12px 20px;background:#324a39;border-bottom:2px solid var(--green)}
+  #anchorBanner.alarm{background:#722d20;border-color:var(--orange)}
+  #anchorBanner strong,#anchorBanner span{display:block;margin:4px 0}
+  #anchorBanner button{margin-top:8px;width:100%}
   /* ---------- Side panel ---------- */
   #panel{display:flex;flex-direction:column;min-height:0;min-width:0;border-left:1px solid var(--line);overflow-y:auto}
   #panel > *{flex-shrink:0}
@@ -844,25 +856,46 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.9.1</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <header class="helm-header"><strong>Helm <small>1.10.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <nav class="main-tabs" aria-label="Main views"><button id="navTab" class="on" aria-pressed="true">Navigation</button><button id="anchorTab" aria-pressed="false">Anchor watch</button></nav>
+    <section id="anchorBanner" hidden aria-label="Anchor watch status"><strong id="anchorState" role="status"></strong><span id="anchorDistance"></span><button id="anchorMute" hidden>Silence for 1 minute</button></section>
     <p id="setupNotice" class="status" hidden></p>
     <section id="proximityAlert" hidden aria-label="Nearby saved point">
       <span id="alertKind"></span><strong id="alertName"></strong><span id="alertDistance"></span><span id="alertMore"></span>
     </section>
     <div class="readout">
       <div><span id="gps"></span><span id="gpsText">GPS off</span></div>
-      <div class="big" id="sog">—<small>knots</small></div>
-      <div class="row"><span>Course</span><b id="cog">—</b></div>
+      <div class="big navigation-only" id="sog">—<small>knots</small></div>
+      <div class="row navigation-only"><span>Course</span><b id="cog">—</b></div>
       <div class="row"><span>Position</span><b id="pos">—</b></div>
       <div class="row"><span>Accuracy</span><b id="acc">—</b></div>
-      <div class="row"><span>Nearest</span><b id="nearest">—</b></div>
+      <div class="row navigation-only"><span>Nearest</span><b id="nearest">—</b></div>
     </div>
     <div class="controls">
       <button id="start" class="primary full">Start GPS</button>
-      <button id="add">Add waypoint</button>
+      <button id="add" class="navigation-only">Add waypoint</button>
       <button id="follow" class="on">Follow boat</button>
     </div>
-    <details class="points-panel" open><summary>Waypoints &amp; hazards</summary><div id="list"></div></details>
+    <section id="navigationPanel"><details class="points-panel" open><summary>Waypoints &amp; hazards</summary><div id="list"></div></details>
+    </section>
+    <section id="anchorPanel" hidden aria-label="Anchor watch controls">
+      <h2>Anchor watch</h2>
+      <p class="status">Keep Helm open, the screen unlocked and sound audible. This browser watch is a supplementary check, not a dependable unattended or overnight alarm.</p>
+      <p id="anchorAwake" class="status"></p>
+      <p id="anchorInfo" class="status" role="status">Start GPS, then mark where you drop the anchor.</p>
+      <button id="anchorHere">Set anchor at current GPS position</button>
+      <details><summary>Enter anchor coordinates</summary>
+        <label for="anchorLat">Latitude (decimal degrees; south is negative)</label><input id="anchorLat" type="number" step="any" inputmode="decimal">
+        <label for="anchorLng">Longitude (decimal degrees)</label><input id="anchorLng" type="number" step="any" inputmode="decimal">
+        <button id="anchorCoordinates">Save anchor coordinates</button>
+      </details>
+      <label for="anchorRadius">Swing limit from anchor (metres)</label><input id="anchorRadius" type="number" min="20" max="2000" value="100" inputmode="numeric">
+      <p class="status">Use the anchor’s position, not the boat’s position after drifting back. Allow for chain, boat length, tide and GPS error. The circle is a warning boundary, not a calculated safe anchoring distance.</p>
+      <button id="anchorArm" class="primary">Start anchor watch</button>
+      <button id="anchorTest">Test anchor alarm</button>
+      <button id="anchorShow">Show anchor</button>
+      <button id="anchorClear">Clear saved anchor</button>
+    </section>
     <p class="reference-note">Reference only · Charts need internet</p>
   </aside>
 </div>
@@ -917,7 +950,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <p id="seamarkStatus" role="status">Seamarks off.</p>
       <p id="offlineStatus" role="status">Checking offline app…</p>
     </details>
-    <p class="reference-note">Helm 1.9.1 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
+    <p class="reference-note">Helm 1.10.0 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
   </div>
 </dialog>
 
@@ -1080,7 +1113,7 @@ document.getElementById('follow').onclick=()=>{following=!following;setFollow();
 map.on('dragstart',()=>{following=false;setFollow();});
 
 function onFix(lat,lng,speedMs,heading,accuracy){
-  lastFix={lat,lng};
+  lastFix={lat,lng,accuracy};
   if(!boat){boat=L.marker([lat,lng],{icon:boatIcon,zIndexOffset:1000}).addTo(map);
             accCircle=L.circle([lat,lng],{radius:accuracy||0,color:'#2A3238',weight:1,fillOpacity:.05}).addTo(map);
             map.setView([lat,lng],15);}
@@ -1094,6 +1127,7 @@ function onFix(lat,lng,speedMs,heading,accuracy){
   document.getElementById('pos').textContent=fmtPos(lat,lng);
   document.getElementById('acc').textContent=accuracy?'± '+Math.round(accuracy)+' m':'—';
   checkAlerts(lat,lng);
+  updateAnchor();
 }
 
 function fmtPos(lat,lng){
@@ -1121,7 +1155,7 @@ function checkAlerts(lat,lng,notify=true){
       alerts.push({hazard:w.type==='hazard',text:(w.type==='hazard'?'Caution. Hazard. ':'Approaching ')+w.name+', '+Math.round(d/10)*10+' metres.'});
     } else if(d>w.radius*1.3&&w.inside){ w.inside=false; }   // 30% buffer so it doesn't re-trigger on the edge
   });
-  if(notify)alerts.sort((a,b)=>Number(b.hazard)-Number(a.hazard)).forEach(a=>speak(a.text));
+  if(notify&&!anchorActive)alerts.sort((a,b)=>Number(b.hazard)-Number(a.hazard)).forEach(a=>speak(a.text));
   nearby.sort((a,b)=>Number(b.w.type==='hazard')-Number(a.w.type==='hazard')||a.d-b.d);
   const banner=document.getElementById('proximityAlert');banner.hidden=!nearby.length;
   if(nearby.length){
@@ -1158,6 +1192,7 @@ async function keepAwake(){
   }catch(e){}
 }
 function stopTracking(){
+  if(anchorActive)endAnchorWatch(true);
   session++;mode='off';
   if(watchId!=null){navigator.geolocation.clearWatch(watchId);watchId=null;}
   if(demoTimer!=null){clearInterval(demoTimer);demoTimer=null;}
@@ -1170,10 +1205,11 @@ function stopTracking(){
 }
 function gpsUnavailable(message){
   clearReadouts();setGps(false,message);
-  if(!staleWarned){clearSpeech();speak('Caution. GPS position unavailable.');staleWarned=true;}
+  if(!staleWarned&&!anchorActive){clearSpeech();speak('Caution. GPS position unavailable.');staleWarned=true;}
+  updateAnchor();
 }
 startBtn.onclick=()=>{
-  if(mode==='gps'){stopTracking();return;}
+  if(mode==='gps'){if(anchorActive&&!confirm('Stop GPS and end anchor watch?'))return;stopTracking();return;}
   stopTracking();
   if(!navigator.geolocation){alert('This browser has no location support.');return;}
   mode='gps';const token=session;lastFixTime=0;gpsStarted=Date.now();staleWarned=false;
@@ -1182,8 +1218,8 @@ startBtn.onclick=()=>{
   startBtn.textContent='Stop GPS';startBtn.classList.remove('primary');
   watchId=navigator.geolocation.watchPosition(p=>{
     if(mode!=='gps'||session!==token)return;
-    if(!Number.isFinite(p.timestamp)||Date.now()-p.timestamp>15000||
-       !Number.isFinite(p.coords.latitude)||!Number.isFinite(p.coords.longitude)){
+    if(!Number.isFinite(p.timestamp)||p.timestamp>Date.now()+1000||Date.now()-p.timestamp>15000||
+       !Number.isFinite(p.coords.latitude)||Math.abs(p.coords.latitude)>90||!Number.isFinite(p.coords.longitude)||Math.abs(p.coords.longitude)>180){
       gpsUnavailable('GPS position stale — alerts paused');return;
     }
     lastFixTime=p.timestamp;staleWarned=false;
@@ -1191,7 +1227,7 @@ startBtn.onclick=()=>{
     onFix(p.coords.latitude,p.coords.longitude,p.coords.speed,p.coords.heading,p.coords.accuracy);
   },err=>{
     if(mode!=='gps'||session!==token)return;
-    if(err.code===1){stopTracking();setGps(false,'Location permission denied');return;}
+    if(err.code===1){if(anchorActive)gpsUnavailable('Location permission denied');else{stopTracking();setGps(false,'Location permission denied');}return;}
     gpsUnavailable('GPS unavailable — alerts paused');
   },{enableHighAccuracy:true,maximumAge:1000,timeout:20000});
 };
@@ -1204,6 +1240,8 @@ document.addEventListener('visibilitychange',()=>{
     if(mode==='gps'&&Date.now()-(lastFixTime||gpsStarted)>15000)gpsUnavailable('GPS position stale — alerts paused');
     keepAwake();
   }
+  if(anchorActive&&document.visibilityState!=='visible'){lastFixTime=0;clearReadouts();}
+  updateAnchor();
 });
 window.addEventListener('pagehide',stopTracking);
 function setGps(live,text){document.getElementById('gps').classList.toggle('live',live);document.getElementById('gpsText').textContent=text;}
@@ -1213,6 +1251,7 @@ function setGps(live,text){document.getElementById('gps').classList.toggle('live
 let demoTimer=null;
 function stopDemo(){if(mode==='demo')stopTracking();}
 document.getElementById('demo').onclick=()=>{
+  if(anchorActive){alert('Stop anchor watch before starting a demo.');return;}
   if(demoTimer){stopDemo();return;}
   if(!waypoints.length){alert('Add a waypoint or two first, then run the demo.');return;}
   stopTracking();mode='demo';keepAwake();
@@ -1234,6 +1273,113 @@ document.getElementById('demo').onclick=()=>{
 };
 
 drawWaypoints();
+
+// ===================== Anchor watch =====================
+// Only the position/radius survive reload. Monitoring always requires explicit re-arming.
+let anchor=null,anchorActive=false,anchorIssue='',anchorMutedUntil=0,anchorSpokenAt=0;
+const anchorLayer=L.layerGroup().addTo(map);
+const ae=id=>document.getElementById(id);
+function anchorTab(show){
+ ae('panel').classList.toggle('anchor-view',show);
+ ae('anchorPanel').hidden=!show;ae('navigationPanel').hidden=show;
+ ae('navTab').classList.toggle('on',!show);ae('anchorTab').classList.toggle('on',show);
+ ae('navTab').setAttribute('aria-pressed',String(!show));ae('anchorTab').setAttribute('aria-pressed',String(show));
+ if(show)stopPlacing();
+}
+ae('navTab').onclick=()=>anchorTab(false);ae('anchorTab').onclick=()=>anchorTab(true);
+function validAnchor(a){return a&&Number.isFinite(a.lat)&&Math.abs(a.lat)<=85&&Number.isFinite(a.lng)&&Math.abs(a.lng)<=180&&Number.isFinite(a.radius)&&a.radius>=20&&a.radius<=2000;}
+function storeAnchor(a){
+ try{localStorage.setItem('helm.anchor',JSON.stringify(a));return true;}
+ catch(e){ae('anchorInfo').textContent='Could not save anchor on this device. Free storage before trying again.';return false;}
+}
+function drawAnchor(){
+ anchorLayer.clearLayers();if(!anchor)return;
+ L.circle([anchor.lat,anchor.lng],{radius:anchor.radius,color:'#F26A21',weight:2,fillOpacity:.07,interactive:false}).addTo(anchorLayer);
+ L.circleMarker([anchor.lat,anchor.lng],{radius:7,color:'#fff',weight:2,fillColor:'#F26A21',fillOpacity:1})
+ .bindTooltip('Anchor',{permanent:true,direction:'top'}).addTo(anchorLayer);
+ ae('anchorLat').value=anchor.lat;ae('anchorLng').value=anchor.lng;ae('anchorRadius').value=anchor.radius;
+}
+function freshAnchorFix(){return mode==='gps'&&lastFix&&Date.now()-lastFixTime<=15000&&Date.now()>=lastFixTime;}
+function goodAnchorFix(radius){return freshAnchorFix()&&Number.isFinite(lastFix.accuracy)&&lastFix.accuracy>0&&lastFix.accuracy<=Math.min(50,radius/2);}
+function anchorRadius(){return Number(ae('anchorRadius').value);}
+function setAnchor(lat,lng){
+ if(anchorActive)return;
+ const next={lat,lng,radius:anchorRadius()};
+ if(!validAnchor(next)){ae('anchorInfo').textContent='Enter valid coordinates and a swing limit between 20 and 2,000 metres.';return;}
+ if(!storeAnchor(next))return;anchor=next;drawAnchor();
+ ae('anchorInfo').textContent='Anchor saved at '+fmtPos(lat,lng)+'. Watch is OFF.';
+ updateAnchor();
+}
+ae('anchorHere').onclick=()=>{
+ if(!goodAnchorFix(anchorRadius())){ae('anchorInfo').textContent='Start GPS and wait for a fresh position with accuracy within half the swing limit (maximum 50 m). Demo positions cannot be used.';return;}
+ if(anchor&&!confirm('Replace the saved anchor with the current boat position?'))return;
+ setAnchor(lastFix.lat,lastFix.lng);
+};
+ae('anchorCoordinates').onclick=()=>{
+ if(!ae('anchorLat').value.trim()||!ae('anchorLng').value.trim()){ae('anchorInfo').textContent='Enter both anchor coordinates.';return;}
+ if(anchor&&!confirm('Replace the saved anchor coordinates?'))return;
+ setAnchor(Number(ae('anchorLat').value),Number(ae('anchorLng').value));
+};
+function endAnchorWatch(interrupted=false){
+ anchorActive=false;anchorIssue='';anchorMutedUntil=0;clearSpeech();
+ try{localStorage.removeItem('helm.anchorWasActive');}catch(e){}
+ ae('anchorInfo').textContent=interrupted?'Anchor watch stopped with GPS. Start GPS and re-arm to resume.':'Anchor watch stopped. Saved position retained.';
+ updateAnchor();
+}
+ae('anchorArm').onclick=()=>{
+ if(anchorActive){if(confirm('Stop anchor watch?'))endAnchorWatch();return;}
+ const radius=anchorRadius();
+ if(!anchor||!validAnchor({...anchor,radius})){ae('anchorInfo').textContent='Set the anchor position and a swing limit between 20 and 2,000 metres first.';return;}
+ if(!goodAnchorFix(radius)||document.visibilityState!=='visible'){ae('anchorInfo').textContent='Start GPS and wait for an accurate live position before arming. Keep Helm visible.';return;}
+ if(distance(anchor.lat,anchor.lng,lastFix.lat,lastFix.lng)+lastFix.accuracy>=radius){ae('anchorInfo').textContent='Boat position including GPS uncertainty reaches the swing limit. Check the anchor position and radius before arming.';return;}
+ if(!storeAnchor({...anchor,radius}))return;
+ anchor={...anchor,radius};anchorActive=true;anchorIssue='';anchorMutedUntil=0;anchorSpokenAt=0;
+ try{localStorage.setItem('helm.anchorWasActive','true');}catch(e){}
+ ae('anchorInfo').textContent='Watch is running. Stop the watch before changing its anchor or radius.';
+ drawAnchor();clearSpeech();speak('Anchor watch started. Keep Helm open and the screen unlocked.');keepAwake();updateAnchor();
+};
+ae('anchorMute').onclick=()=>{anchorMutedUntil=Date.now()+60000;clearSpeech();updateAnchor();};
+ae('anchorTest').onclick=()=>{clearSpeech();speak('Test only. Anchor watch alarm. Boat outside swing limit. Check your position.');};
+ae('anchorShow').onclick=()=>{if(anchor){following=false;setFollow();map.setView([anchor.lat,anchor.lng],16);}else ae('anchorInfo').textContent='Set an anchor position first.';};
+ae('anchorClear').onclick=()=>{
+ if(anchorActive||!anchor||!confirm('Clear the saved anchor position?'))return;
+ try{localStorage.removeItem('helm.anchor');}catch(e){ae('anchorInfo').textContent='Could not clear saved anchor.';return;}
+ anchor=null;anchorLayer.clearLayers();ae('anchorLat').value='';ae('anchorLng').value='';ae('anchorInfo').textContent='Anchor cleared. Watch is OFF.';updateAnchor();
+};
+function updateAnchor(){
+ ae('anchorArm').textContent=anchorActive?'Stop anchor watch':'Start anchor watch';
+ ['anchorHere','anchorCoordinates','anchorLat','anchorLng','anchorRadius','anchorClear'].forEach(id=>ae(id).disabled=anchorActive);
+ ae('anchorAwake').textContent=wakeLock?'Screen keep-awake is active. Keep Helm in front.':'Screen keep-awake is not active. Keep the screen unlocked and Helm in front.';
+ ae('anchorBanner').hidden=!anchorActive;
+ if(!anchorActive)return;
+ let issue='',d=null;
+ if(document.visibilityState!=='visible')issue='Helm is in the background — monitoring cannot be relied on';
+ else if(!freshAnchorFix())issue='GPS unavailable or stale — anchor position cannot be checked';
+ else{
+   d=distance(anchor.lat,anchor.lng,lastFix.lat,lastFix.lng);
+   if(!goodAnchorFix(anchor.radius))issue='GPS accuracy poor — anchor position uncertain';
+   else if(d>anchor.radius)issue='Outside anchor swing limit — check your position';
+   else if(d+lastFix.accuracy>=anchor.radius)issue='GPS uncertainty reaches swing limit — check your position';
+ }
+ if(issue!==anchorIssue){anchorMutedUntil=0;anchorSpokenAt=0;if(anchorIssue)clearSpeech();anchorIssue=issue;}
+ ae('anchorState').textContent=issue?'ANCHOR WATCH · '+issue:'ANCHOR WATCH · Within swing limit';
+ ae('anchorBanner').classList.toggle('alarm',!!issue);
+ ae('anchorDistance').textContent=(d===null?'Distance unavailable':Math.round(d)+' m from anchor')+' · limit '+anchor.radius+' m';
+ ae('anchorMute').hidden=!issue;
+ ae('anchorMute').textContent=Date.now()<anchorMutedUntil?'Silenced · '+Math.ceil((anchorMutedUntil-Date.now())/1000)+' s remaining':'Silence for 1 minute';
+ if(issue&&Date.now()>=anchorMutedUntil&&(!anchorSpokenAt||Date.now()-anchorSpokenAt>=10000)){
+   clearSpeech();speak('Anchor watch warning. '+issue+'.');anchorSpokenAt=Date.now();
+ }
+}
+try{
+ const savedAnchor=JSON.parse(localStorage.getItem('helm.anchor')||'null');
+ if(validAnchor(savedAnchor)){anchor={lat:savedAnchor.lat,lng:savedAnchor.lng,radius:savedAnchor.radius};drawAnchor();ae('anchorInfo').textContent='Saved anchor restored. Watch is OFF — start GPS, check position and re-arm.';}
+ if(localStorage.getItem('helm.anchorWasActive')==='true'){
+   ae('anchorInfo').textContent='Previous anchor watch was interrupted. Watch is OFF — start GPS and re-arm.';
+   anchorTab(true);localStorage.removeItem('helm.anchorWasActive');
+ }
+}catch(e){}
+updateAnchor();setInterval(updateAnchor,1000);
 
 // ===================== 6. Reference charts =====================
 const chartSource=document.getElementById('chartSource');
@@ -1548,7 +1694,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.9.1'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.10.0'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
