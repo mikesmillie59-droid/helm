@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.11.0">
+<html lang="en" data-helm-version="1.12.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Helm — 1.11.0</title>
+<title>Helm — 1.12.0</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -865,7 +865,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.11.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <header class="helm-header"><strong>Helm <small>1.12.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
     <nav class="main-tabs" aria-label="Main views"><button id="navTab" class="on" aria-pressed="true">Navigation</button><button id="anchorTab" aria-pressed="false">Anchor watch</button></nav>
     <section id="anchorBanner" hidden aria-label="Anchor watch status"><strong id="anchorState" role="status"></strong><span id="anchorDistance"></span><button id="anchorMute" hidden>Silence for 1 minute</button></section>
     <p id="setupNotice" class="status" hidden></p>
@@ -885,7 +885,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <button id="add" class="navigation-only">Add place</button>
       <button id="follow" class="on">Follow boat</button>
     </div>
-    <section id="navigationPanel"><details class="points-panel" open><summary>Saved places</summary><div class="place-filters" aria-label="Filter saved places"><button data-place-filter="all" aria-pressed="true" class="on">All</button><button data-place-filter="waypoint" aria-pressed="false">Waypoints</button><button data-place-filter="hazard" aria-pressed="false">Hazards</button><button data-place-filter="fishing" aria-pressed="false">Fishing spots</button></div><p class="reference-note">Filters change this list only. All places remain on the map; enabled alerts stay active.</p><div id="list"></div></details>
+    <section id="navigationPanel"><details class="points-panel" open><summary>Saved places</summary><div class="place-filters" aria-label="Filter saved places"><button data-place-filter="all" aria-pressed="true" class="on">All</button><button data-place-filter="waypoint" aria-pressed="false">Waypoints</button><button data-place-filter="hazard" aria-pressed="false">Hazards</button><button data-place-filter="fishing" aria-pressed="false">Fishing spots</button></div><p class="reference-note">Filters change the saved places shown on both the map and this list. Enabled proximity alerts stay active for hidden places.</p><div id="list"></div></details>
     </section>
     <section id="anchorPanel" hidden aria-label="Anchor watch controls">
       <h2>Anchor watch</h2>
@@ -959,7 +959,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <p id="seamarkStatus" role="status">Seamarks off.</p>
       <p id="offlineStatus" role="status">Checking offline app…</p>
     </details>
-    <p class="reference-note">Helm 1.11.0 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
+    <p class="reference-note">Helm 1.12.0 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
   </div>
 </dialog>
 
@@ -1019,14 +1019,14 @@ let placeFilter='all';
 const placeLabel=type=>({hazard:'Hazard',fishing:'Fishing spot',waypoint:'Waypoint'}[type]);
 const alertsEnabled=w=>w.type==='hazard'||(w.alerts??w.type!=='fishing');
 document.querySelectorAll('[data-place-filter]').forEach(b=>b.onclick=()=>{
- placeFilter=b.dataset.placeFilter;renderList();
+ placeFilter=b.dataset.placeFilter;drawWaypoints();
  document.querySelectorAll('[data-place-filter]').forEach(x=>{const selected=x.dataset.placeFilter===placeFilter;x.classList.toggle('on',selected);x.setAttribute('aria-pressed',String(selected));});
 });
 const wpLayer = L.layerGroup().addTo(map);
 
 function drawWaypoints(){
   wpLayer.clearLayers();
-  waypoints.forEach(w=>{
+  waypoints.filter(w=>placeFilter==='all'||w.type===placeFilter).forEach(w=>{
     const hazard=w.type==='hazard',fishing=w.type==='fishing',colour=hazard?'#F26A21':fishing?'#42A5F5':'#3E9B45';
     if(alertsEnabled(w))L.circle([w.lat,w.lng],{radius:w.radius,color:colour,weight:1.5,fillOpacity:.08,interactive:false}).addTo(wpLayer);
     const shape=fishing?'<circle cx="16" cy="16" r="13" fill="#1565C0" stroke="white" stroke-width="2"/><path d="M8 16 Q16 5 24 16 Q16 27 8 16 L4 11 V21 Z" fill="white"/><circle cx="20" cy="15" r="1.5" fill="#1565C0"/>':hazard?'<path d="M16 2 L30 29 H2 Z" fill="#F26A21" stroke="white" stroke-width="2"/><text x="16" y="24" text-anchor="middle" font-size="21" font-weight="bold" fill="#1a1a1a">!</text>':'<circle cx="16" cy="16" r="11" fill="#3E9B45" stroke="white" stroke-width="3"/>';
@@ -1728,7 +1728,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.11.0'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.12.0'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
