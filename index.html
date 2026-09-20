@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.10.0">
+<html lang="en" data-helm-version="1.11.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Helm — 1.10.0</title>
+<title>Helm — 1.11.0</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -746,6 +746,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   #anchorBanner.alarm{background:#722d20;border-color:var(--orange)}
   #anchorBanner strong,#anchorBanner span{display:block;margin:4px 0}
   #anchorBanner button{margin-top:8px;width:100%}
+  textarea{width:100%;font:inherit;color:var(--buff);background:#1F262B;border:1px solid var(--line);border-radius:10px;padding:12px;resize:vertical}
+  #wpAlerts{width:24px;min-height:24px;vertical-align:middle}
+  .place-filters{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 16px}
+  .place-filters button{font-size:14px;padding:6px;min-height:44px}
+  .wp.fishing .dot{background:#42A5F5}
+  .wp .notes{font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:6px;color:var(--buff-dim)}
+  .wp .name{overflow-wrap:anywhere}.wp>div{min-width:0}
   /* ---------- Side panel ---------- */
   #panel{display:flex;flex-direction:column;min-height:0;min-width:0;border-left:1px solid var(--line);overflow-y:auto}
   #panel > *{flex-shrink:0}
@@ -840,23 +847,25 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 <body>
 <div id="app">
   <div id="map"></div>
-  <div id="hint">Tap the map where you want the waypoint</div>
+  <div id="hint">Tap the map where you want to save a place</div>
 
   <dialog id="sheet" aria-labelledby="pointTitle">
-    <h3 id="pointTitle">New waypoint</h3>
+    <h3 id="pointTitle">New place</h3>
     <p id="wpCoordinates"></p>
     <div class="field"><label for="wpName">Name (this is what gets spoken)</label>
       <input id="wpName" placeholder="e.g. Rocks off Rakino"></div>
     <div class="field"><label for="wpType">Type</label>
-      <select id="wpType"><option value="waypoint">Waypoint</option><option value="hazard">Hazard</option></select></div>
-    <div class="field"><label for="wpRadius">Alert when within (metres)</label>
+      <select id="wpType"><option value="waypoint">Waypoint</option><option value="hazard">Hazard</option><option value="fishing">Fishing spot</option></select></div>
+    <div class="field"><label><input id="wpAlerts" type="checkbox" checked> Proximity alert</label><p id="wpAlertHelp" class="status"></p></div>
+    <div class="field" id="wpRadiusField"><label for="wpRadius">Alert when within (metres)</label>
       <input id="wpRadius" type="number" inputmode="numeric" value="200"></div>
-    <div class="actions"><button id="wpCancel">Cancel</button><button id="wpSave" class="primary">Save waypoint</button></div>
+    <div class="field"><label for="wpNotes">Notes (optional)</label><textarea id="wpNotes" maxlength="2000" rows="4" placeholder="Depth, species, bait, best tide…"></textarea></div>
+    <div class="actions"><button id="wpCancel">Cancel</button><button id="wpSave" class="primary">Save place</button></div>
     <button id="wpDelete" hidden>Delete point</button>
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.10.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <header class="helm-header"><strong>Helm <small>1.11.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
     <nav class="main-tabs" aria-label="Main views"><button id="navTab" class="on" aria-pressed="true">Navigation</button><button id="anchorTab" aria-pressed="false">Anchor watch</button></nav>
     <section id="anchorBanner" hidden aria-label="Anchor watch status"><strong id="anchorState" role="status"></strong><span id="anchorDistance"></span><button id="anchorMute" hidden>Silence for 1 minute</button></section>
     <p id="setupNotice" class="status" hidden></p>
@@ -873,10 +882,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     </div>
     <div class="controls">
       <button id="start" class="primary full">Start GPS</button>
-      <button id="add" class="navigation-only">Add waypoint</button>
+      <button id="add" class="navigation-only">Add place</button>
       <button id="follow" class="on">Follow boat</button>
     </div>
-    <section id="navigationPanel"><details class="points-panel" open><summary>Waypoints &amp; hazards</summary><div id="list"></div></details>
+    <section id="navigationPanel"><details class="points-panel" open><summary>Saved places</summary><div class="place-filters" aria-label="Filter saved places"><button data-place-filter="all" aria-pressed="true" class="on">All</button><button data-place-filter="waypoint" aria-pressed="false">Waypoints</button><button data-place-filter="hazard" aria-pressed="false">Hazards</button><button data-place-filter="fishing" aria-pressed="false">Fishing spots</button></div><p class="reference-note">Filters change this list only. All places remain on the map; enabled alerts stay active.</p><div id="list"></div></details>
     </section>
     <section id="anchorPanel" hidden aria-label="Anchor watch controls">
       <h2>Anchor watch</h2>
@@ -920,7 +929,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     </details>
     <details class="chart-settings" id="pointsSettings">
       <summary>Saved points</summary>
-      <p>Save a copy of your waypoints and hazards, or transfer them to another device.</p>
+      <p>Save a copy of your waypoints, hazards and fishing spots, or transfer them to another device.</p>
       <div class="settings-actions"><button id="export">Back up points</button><button id="import">Restore points</button></div>
       <input id="importFile" type="file" accept=".json,application/json" hidden>
     </details>
@@ -950,7 +959,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <p id="seamarkStatus" role="status">Seamarks off.</p>
       <p id="offlineStatus" role="status">Checking offline app…</p>
     </details>
-    <p class="reference-note">Helm 1.10.0 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
+    <p class="reference-note">Helm 1.11.0 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
   </div>
 </dialog>
 
@@ -976,10 +985,11 @@ function cleanPoints(data){
   if(!Array.isArray(data)||data.length>10000)throw Error('Expected a list of up to 10,000 points.');
   return data.map(w=>{
     if(!w||typeof w.name!=='string'||!w.name.trim()||w.name.length>200||
-       !['waypoint','hazard'].includes(w.type)||!Number.isFinite(w.lat)||Math.abs(w.lat)>90||
+       !['waypoint','hazard','fishing'].includes(w.type)||!Number.isFinite(w.lat)||Math.abs(w.lat)>90||
        !Number.isFinite(w.lng)||Math.abs(w.lng)>180||!Number.isFinite(w.radius)||w.radius<20||w.radius>100000)
       throw Error('Invalid point name, coordinates, type or radius (20–100,000 m).');
-    return {name:w.name.trim(),type:w.type,lat:w.lat,lng:w.lng,radius:w.radius,inside:false};
+    if((w.notes!==undefined&&(typeof w.notes!=='string'||w.notes.length>2000))||(w.alerts!==undefined&&typeof w.alerts!=='boolean'))throw Error('Invalid place notes or alert setting.');
+    return {name:w.name.trim(),type:w.type,lat:w.lat,lng:w.lng,radius:w.radius,notes:(w.notes||'').trim(),alerts:w.type==='hazard'?true:(w.alerts??w.type!=='fishing'),inside:false};
   });
 }
 let waypoints=[];
@@ -990,9 +1000,9 @@ function save(next=waypoints){
   catch(e){alert('Unable to save points. Back up your points and check device storage.');return false;}
 }
 document.getElementById('export').onclick=()=>{
-  const blob=new Blob([JSON.stringify({app:'Helm',version:1,points:waypoints.map(({inside,...w})=>w)},null,2)],{type:'application/json'});
+  const blob=new Blob([JSON.stringify({app:'Helm',version:2,points:waypoints.map(({inside,...w})=>w)},null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=url;a.download='helm-waypoints-'+new Date().toISOString().slice(0,10)+'.json';
+  a.href=url;a.download='helm-saved-places-'+new Date().toISOString().slice(0,10)+'.json';
   document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
 };
 document.getElementById('import').onclick=()=>document.getElementById('importFile').click();
@@ -1005,16 +1015,23 @@ document.getElementById('importFile').onchange=async e=>{
     if(save(points)){closePointEditor();waypoints=points;drawWaypoints();refreshPointAlerts();}
   }catch(err){alert('Backup not restored. '+err.message);}
 };
+let placeFilter='all';
+const placeLabel=type=>({hazard:'Hazard',fishing:'Fishing spot',waypoint:'Waypoint'}[type]);
+const alertsEnabled=w=>w.type==='hazard'||(w.alerts??w.type!=='fishing');
+document.querySelectorAll('[data-place-filter]').forEach(b=>b.onclick=()=>{
+ placeFilter=b.dataset.placeFilter;renderList();
+ document.querySelectorAll('[data-place-filter]').forEach(x=>{const selected=x.dataset.placeFilter===placeFilter;x.classList.toggle('on',selected);x.setAttribute('aria-pressed',String(selected));});
+});
 const wpLayer = L.layerGroup().addTo(map);
 
 function drawWaypoints(){
   wpLayer.clearLayers();
   waypoints.forEach(w=>{
-    const hazard=w.type==='hazard',colour=hazard?'#F26A21':'#3E9B45';
-    L.circle([w.lat,w.lng],{radius:w.radius,color:colour,weight:1.5,fillOpacity:.08,interactive:false}).addTo(wpLayer);
-    const shape=hazard?'<path d="M16 2 L30 29 H2 Z" fill="#F26A21" stroke="white" stroke-width="2"/><text x="16" y="24" text-anchor="middle" font-size="21" font-weight="bold" fill="#1a1a1a">!</text>':'<circle cx="16" cy="16" r="11" fill="#3E9B45" stroke="white" stroke-width="3"/>';
+    const hazard=w.type==='hazard',fishing=w.type==='fishing',colour=hazard?'#F26A21':fishing?'#42A5F5':'#3E9B45';
+    if(alertsEnabled(w))L.circle([w.lat,w.lng],{radius:w.radius,color:colour,weight:1.5,fillOpacity:.08,interactive:false}).addTo(wpLayer);
+    const shape=fishing?'<circle cx="16" cy="16" r="13" fill="#1565C0" stroke="white" stroke-width="2"/><path d="M8 16 Q16 5 24 16 Q16 27 8 16 L4 11 V21 Z" fill="white"/><circle cx="20" cy="15" r="1.5" fill="#1565C0"/>':hazard?'<path d="M16 2 L30 29 H2 Z" fill="#F26A21" stroke="white" stroke-width="2"/><text x="16" y="24" text-anchor="middle" font-size="21" font-weight="bold" fill="#1a1a1a">!</text>':'<circle cx="16" cy="16" r="11" fill="#3E9B45" stroke="white" stroke-width="3"/>';
     L.marker([w.lat,w.lng],{icon:L.divIcon({className:'point-icon',html:'<svg viewBox="0 0 32 32" aria-hidden="true">'+shape+'</svg>',iconSize:[44,44],iconAnchor:[22,22]}),
-      title:(hazard?'Hazard: ':'Waypoint: ')+w.name+' — edit point',alt:(hazard?'Hazard: ':'Waypoint: ')+w.name,keyboard:true,bubblingMouseEvents:false})
+      title:(placeLabel(w.type)+': ')+w.name+' — edit point',alt:(placeLabel(w.type)+': ')+w.name,keyboard:true,bubblingMouseEvents:false})
       .bindTooltip(esc(w.name),{permanent:true,direction:'top',offset:[0,-22],className:'helm-point-label'}).on('click',()=>{if(!placing)editPoint(w);}).addTo(wpLayer);
   });
   renderList();
@@ -1023,14 +1040,16 @@ function drawWaypoints(){
 function renderList(){
   const el = document.getElementById('list');
   if(!waypoints.length){
-    el.innerHTML = '<div class="empty">No waypoints yet. Tap <b>Add waypoint</b>, then tap the map. The name you give it is what the app will say out loud.</div>';
+    el.innerHTML = '<div class="empty">No saved places yet. Tap <b>Add place</b>, then tap the map and choose a type.</div>';
     return;
   }
-  el.innerHTML = '<h2>Waypoints and hazards</h2>' + waypoints.map((w,i)=>`
+  const visible=waypoints.map((w,i)=>({w,i})).filter(({w})=>placeFilter==='all'||w.type===placeFilter);
+  if(!visible.length){el.innerHTML='<div class="empty">No places of this type yet.</div>';return;}
+  el.innerHTML = '<h2>Saved places</h2>' + visible.map(({w,i})=>`
     <div class="wp ${w.type}" data-i="${i}">
       <div class="dot"></div>
       <div><div class="name">${esc(w.name)}</div>
-        <div class="meta">${w.type==='hazard'?'Hazard':'Waypoint'} · alert at ${w.radius} m · <span class="dist" data-i="${i}">—</span></div></div>
+        <div class="meta">${placeLabel(w.type)} · ${alertsEnabled(w)?'alert at '+w.radius+' m':'alerts off'} · <span class="dist" data-i="${i}">—</span></div>${w.notes?'<div class="notes">'+esc(w.notes)+'</div>':''}</div>
       <button data-edit="${i}">Edit</button>
     </div>`).join('');
   el.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editPoint(waypoints[+b.dataset.edit]));
@@ -1044,19 +1063,30 @@ const esc = s => s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':
 // Point editor uses the original object, so an old selection cannot edit a different point.
 let placing=false,pending=null,editingPoint=null;
 const sheet=document.getElementById('sheet'),hint=document.getElementById('hint');
-function stopPlacing(){placing=false;hint.classList.remove('show');document.getElementById('add').textContent='Add waypoint';}
+function stopPlacing(){placing=false;hint.classList.remove('show');document.getElementById('add').textContent='Add place';}
 function closePointEditor(){sheet.close();pending=null;editingPoint=null;}
 function openPointEditor(point=null){
  editingPoint=point;
- document.getElementById('pointTitle').textContent=point?'Edit saved point':'New waypoint';
+ document.getElementById('pointTitle').textContent=point?'Edit saved point':'New place';
  document.getElementById('wpName').value=point?point.name:'';
  document.getElementById('wpType').value=point?point.type:'waypoint';
  document.getElementById('wpRadius').value=point?point.radius:200;
+ document.getElementById('wpNotes').value=point?.notes||'';
+ document.getElementById('wpAlerts').checked=point?alertsEnabled(point):true;
+ updatePlaceFields();
  document.getElementById('wpCoordinates').textContent=fmtPos(pending.lat,pending.lng);
  document.getElementById('wpSave').textContent=point?'Save changes':'Save point';
  document.getElementById('wpDelete').hidden=!point;
  sheet.showModal();document.getElementById('wpName').focus();
 }
+function updatePlaceFields(){
+ const type=document.getElementById('wpType').value,box=document.getElementById('wpAlerts');
+ box.disabled=type==='hazard';if(box.disabled)box.checked=true;
+ document.getElementById('wpRadiusField').hidden=!box.checked;
+ document.getElementById('wpAlertHelp').textContent=type==='hazard'?'Hazard proximity alerts remain enabled.':box.checked?'Speak the place name when entering its radius.':'Saved on the map without a proximity warning.';
+}
+document.getElementById('wpType').onchange=()=>{document.getElementById('wpAlerts').checked=document.getElementById('wpType').value!=='fishing';updatePlaceFields();};
+document.getElementById('wpAlerts').onchange=updatePlaceFields;
 function editPoint(point){
  if(!point||!waypoints.includes(point))return;
  stopPlacing();pending={lat:point.lat,lng:point.lng};openPointEditor(point);
@@ -1078,12 +1108,15 @@ function refreshPointAlerts(){
 document.getElementById('wpSave').onclick=()=>{
  if(!pending)return;
  const name=document.getElementById('wpName').value.trim(),type=document.getElementById('wpType').value;
- const radius=Number(document.getElementById('wpRadius').value);
+ const alerts=type==='hazard'||document.getElementById('wpAlerts').checked;
+ const radius=alerts?Number(document.getElementById('wpRadius').value):(editingPoint?.radius||200);
+ const notes=document.getElementById('wpNotes').value.trim();
+ if(notes.length>2000){alert('Keep notes within 2,000 characters.');return;}
  if(!name||name.length>200){alert('Use a name of 1 to 200 characters.');return;}
- if(!['waypoint','hazard'].includes(type)||!Number.isFinite(radius)||radius<20||radius>100000){alert('Choose a point type and a warning distance between 20 and 100,000 metres.');return;}
+ if(!['waypoint','hazard','fishing'].includes(type)||!Number.isFinite(radius)||radius<20||radius>100000){alert('Choose a point type and a warning distance between 20 and 100,000 metres.');return;}
  const index=editingPoint?waypoints.indexOf(editingPoint):-1;
  if(editingPoint&&index<0){alert('This point has changed. Open it again.');closePointEditor();return;}
- const point={name,type,radius,lat:pending.lat,lng:pending.lng,inside:false};
+ const point={name,type,radius,notes,alerts,lat:pending.lat,lng:pending.lng,inside:false};
  const next=editingPoint?waypoints.map((w,i)=>i===index?point:w):[...waypoints,point];
  if(save(next)){waypoints=next;closePointEditor();drawWaypoints();refreshPointAlerts();}
 };
@@ -1149,6 +1182,7 @@ function checkAlerts(lat,lng,notify=true){
     const d=distance(lat,lng,w.lat,w.lng);
     const el=document.querySelector(`.dist[data-i="${i}"]`); if(el)el.textContent=fmtDist(d);
     if(!nearest||d<nearest.d)nearest={w,d};
+    if(!alertsEnabled(w)){w.inside=false;return;}
     if(d<=w.radius)nearby.push({w,d});
     if(d<=w.radius&&!w.inside){
       w.inside=true;
@@ -1160,7 +1194,7 @@ function checkAlerts(lat,lng,notify=true){
   const banner=document.getElementById('proximityAlert');banner.hidden=!nearby.length;
   if(nearby.length){
    const {w,d}=nearby[0],hazard=w.type==='hazard';banner.classList.toggle('hazard',hazard);
-   document.getElementById('alertKind').textContent=(mode==='demo'?'DEMO · ':'')+(hazard?'CAUTION · SAVED HAZARD':'NEARBY WAYPOINT');
+   document.getElementById('alertKind').textContent=(mode==='demo'?'DEMO · ':'')+(hazard?'CAUTION · SAVED HAZARD':w.type==='fishing'?'NEARBY FISHING SPOT':'NEARBY WAYPOINT');
    document.getElementById('alertName').textContent=w.name;
    document.getElementById('alertDistance').textContent=fmtDist(d)+' away · warning at '+w.radius+' m';
    document.getElementById('alertMore').textContent=nearby.length>1?'Also within range of '+(nearby.length-1)+' saved point(s).':'';
@@ -1253,7 +1287,7 @@ function stopDemo(){if(mode==='demo')stopTracking();}
 document.getElementById('demo').onclick=()=>{
   if(anchorActive){alert('Stop anchor watch before starting a demo.');return;}
   if(demoTimer){stopDemo();return;}
-  if(!waypoints.length){alert('Add a waypoint or two first, then run the demo.');return;}
+  if(!waypoints.length){alert('Add a saved place first, then run the demo.');return;}
   stopTracking();mode='demo';keepAwake();
   speak('Demo run started.');
   document.getElementById('demo').classList.add('on');
@@ -1694,7 +1728,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.10.0'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.11.0'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
