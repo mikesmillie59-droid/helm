@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.12.0">
+<html lang="en" data-helm-version="1.13.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Helm — 1.12.0</title>
+<title>Helm — 1.13.0</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -825,6 +825,22 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   #setupNotice{margin:0;padding:12px 16px;background:#493d2d}
   #settingsDialog{color:var(--buff);background:var(--slate);border:1px solid var(--line);border-radius:16px;padding:0;width:min(520px,calc(100% - 24px));max-height:90vh;max-height:90dvh;overflow:auto;overscroll-behavior:contain}
   #settingsDialog::backdrop{background:rgba(0,0,0,.55)}
+  #firstRunDialog{color:var(--buff);background:var(--slate);border:1px solid var(--line);border-radius:16px;padding:0;width:min(560px,calc(100% - 24px));max-height:92vh;max-height:92dvh;overflow:auto;box-shadow:0 16px 50px rgba(0,0,0,.55)}
+  #firstRunDialog::backdrop{background:rgba(0,0,0,.72)}
+  .setup-welcome{padding:22px}
+  .setup-welcome h2{font-size:26px;margin:4px 0 10px}
+  .setup-welcome p,.setup-welcome li{font-size:15px;line-height:1.5}
+  .setup-kicker{color:var(--green);font-size:12px;font-weight:800;letter-spacing:.12em}
+  .setup-steps{margin:16px 0;padding-left:24px}
+  .setup-steps li{margin:10px 0;padding-left:4px}
+  .setup-welcome a{color:var(--green)}
+  .setup-welcome label{display:block;margin:14px 0 6px}
+  .setup-check{display:flex!important;align-items:center;gap:10px;color:var(--buff-dim)}
+  .setup-check input{width:24px;min-height:24px;flex:0 0 auto}
+  .setup-actions{display:grid;grid-template-columns:1fr 1.2fr;gap:10px;margin-top:18px}
+  .setup-actions button{font-size:15px;min-height:54px;padding:8px 12px}
+  #setupKeyStatus{min-height:22px;color:var(--orange);margin:7px 0 0}
+  .setup-note{border-top:1px solid var(--line);padding-top:14px;color:var(--buff-dim)}
   .settings-header{position:sticky;top:0;background:var(--slate);z-index:2}.settings-header h2{font-size:22px;margin:0}
   .settings-header button{min-height:48px}.tools-section h3{font-size:17px;padding:0 20px}
   .settings-body{padding-bottom:12px}
@@ -841,6 +857,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #panel{border-left:0;border-top:1px solid var(--line);overflow-y:auto}
     #list{flex:none}
     .readout .big{font-size:40px}
+    .setup-actions{grid-template-columns:1fr}
   }
 </style>
 </head>
@@ -865,7 +882,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.12.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <header class="helm-header"><strong>Helm <small>1.13.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
     <nav class="main-tabs" aria-label="Main views"><button id="navTab" class="on" aria-pressed="true">Navigation</button><button id="anchorTab" aria-pressed="false">Anchor watch</button></nav>
     <section id="anchorBanner" hidden aria-label="Anchor watch status"><strong id="anchorState" role="status"></strong><span id="anchorDistance"></span><button id="anchorMute" hidden>Silence for 1 minute</button></section>
     <p id="setupNotice" class="status" hidden></p>
@@ -908,6 +925,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <p class="reference-note">Reference only · Charts need internet</p>
   </aside>
 </div>
+<dialog id="firstRunDialog" aria-labelledby="firstRunTitle">
+  <div class="setup-welcome">
+    <div class="setup-kicker">FIRST-TIME SETUP</div>
+    <h2 id="firstRunTitle">Set up My Helm charts</h2>
+    <p>My Helm does not include a shared LINZ key. Each boat owner needs an access key issued to their own LINZ Data Service account.</p>
+    <ol class="setup-steps">
+      <li><a href="https://data.linz.govt.nz/my/api/" target="_blank" rel="noopener noreferrer"><strong>Get or view your LINZ access key</strong></a>. Keep the key private.</li>
+      <li>Copy the key from LINZ and paste it below.</li>
+      <li>Select <strong>Save key and use LINZ charts</strong>. Chart images require an internet connection and are not downloaded with the app.</li>
+    </ol>
+    <label for="setupLinzKey">Your LINZ Data Service access key</label>
+    <input id="setupLinzKey" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" placeholder="Paste your LINZ key here">
+    <label class="setup-check"><input id="setupRememberKey" type="checkbox" checked> Remember this key in this browser on this device</label>
+    <p id="setupKeyStatus" role="status"></p>
+    <div class="setup-actions"><button id="setupStreet" type="button">Use street map for now</button><button id="setupUseLinz" class="primary" type="button">Save key and use LINZ charts</button></div>
+    <p class="setup-note">You can reopen this guide or change the key later in <strong>Settings → Advanced &amp; troubleshooting</strong>. LINZ keys are never included in Saved Places backups.</p>
+  </div>
+</dialog>
 <dialog id="settingsDialog" aria-labelledby="settingsTitle">
   <header class="settings-header"><h2 id="settingsTitle">Settings</h2><button id="closeSettings" autofocus>Done</button></header>
   <div class="settings-body">
@@ -954,12 +989,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         <button id="forgetKey">Forget saved LINZ key</button>
         <p>Get a key from <a href="https://data.linz.govt.nz/my/api/" target="_blank" rel="noopener noreferrer">LINZ Data Service</a>. Keys are excluded from point backups.</p>
       </div>
+      <button id="setupHelp" type="button">Show first-time LINZ setup guide</button>
       <h3>Loading &amp; offline status</h3>
       <p id="chartStatus" role="status">Street map selected.</p>
       <p id="seamarkStatus" role="status">Seamarks off.</p>
       <p id="offlineStatus" role="status">Checking offline app…</p>
     </details>
-    <p class="reference-note">Helm 1.12.0 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
+    <p class="reference-note">Helm 1.13.0 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
   </div>
 </dialog>
 
@@ -1696,6 +1732,38 @@ function restorePreferences(){
  seamarks.onchange({target:seamarks});
 }
 restorePreferences();
+const firstRunDialog=document.getElementById('firstRunDialog');
+const setupLinzKey=document.getElementById('setupLinzKey');
+const setupRememberKey=document.getElementById('setupRememberKey');
+const setupKeyStatus=document.getElementById('setupKeyStatus');
+function openFirstRunSetup(){
+ setupLinzKey.value=linzKey.value;
+ setupRememberKey.checked=document.getElementById('rememberKey').checked||!linzKey.value;
+ setupKeyStatus.textContent='';
+ if(!firstRunDialog.open)firstRunDialog.showModal();
+}
+document.getElementById('setupUseLinz').onclick=()=>{
+ const key=setupLinzKey.value.trim();
+ if(!/^[A-Za-z0-9_-]{10,128}$/.test(key)){
+  setupKeyStatus.textContent='Paste a valid LINZ access key before continuing.';
+  setupLinzKey.focus();return;
+ }
+ linzKey.value=key;
+ document.getElementById('rememberKey').checked=setupRememberKey.checked;
+ chartSource.value='linz';chartId.value='auto';updateChartForm();applyChart();
+ storeSetting('helm.setupComplete','true');
+ firstRunDialog.close();
+};
+document.getElementById('setupStreet').onclick=()=>{
+ chartSource.value='street';updateChartForm();applyChart();
+ storeSetting('helm.setupComplete','true');
+ firstRunDialog.close();
+};
+document.getElementById('setupHelp').onclick=()=>{settingsDialog.close();setTimeout(openFirstRunSetup,0);};
+if(savedSetting('helm.setupComplete')!=='true'){
+ if(/^[A-Za-z0-9_-]{10,128}$/.test(storedKey||''))storeSetting('helm.setupComplete','true');
+ else setTimeout(openFirstRunSetup,150);
+}
 map.on('moveend',()=>{
  const center=map.getCenter(),zoom=map.getZoom();
  if(Number.isFinite(center.lat)&&Math.abs(center.lat)<=85&&Number.isFinite(center.lng)&&Number.isInteger(zoom)&&zoom>=1&&zoom<=18)
@@ -1728,7 +1796,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.12.0'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.13.0'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
