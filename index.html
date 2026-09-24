@@ -1,11 +1,16 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.14.0">
+<html lang="en" data-helm-version="1.15.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Helm — 1.14.0</title>
+<meta name="apple-mobile-web-app-title" content="Helm">
+<meta name="theme-color" content="#2A3238">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Helm — 1.15.0</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -865,6 +870,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   .mob-actions button{min-height:48px;font-size:16px;padding:0 8px}
   .mob-icon{background:transparent;border:0}
   .mob-label{font-weight:700;color:#B71C1C}
+  /* ---------- Keeping saved places safe ---------- */
+  #safetyNotice{margin:0;padding:14px 16px;background:#493d2d;border-bottom:2px solid #c9a24a}
+  #safetyNotice p{margin:0 0 8px;font-size:15px;line-height:1.45}
+  #safetyNotice .safety-actions{display:grid;grid-template-columns:1.4fr 1fr;gap:8px}
+  #safetyNotice button{min-height:48px;font-size:16px;padding:0 10px}
+  #backupStatus{margin:12px 0 0}
   /* ---------- Narrow screens (phone / portrait) ---------- */
   @media (max-width:820px){
     #app{grid-template-columns:1fr;grid-template-rows:1fr auto}
@@ -897,7 +908,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.14.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <header class="helm-header"><strong>Helm <small>1.15.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
     <nav class="main-tabs" aria-label="Main views"><button id="navTab" class="on" aria-pressed="true">Navigation</button><button id="anchorTab" aria-pressed="false">Anchor watch</button></nav>
     <section id="anchorBanner" hidden aria-label="Anchor watch status"><strong id="anchorState" role="status"></strong><span id="anchorDistance"></span><button id="anchorMute" hidden>Silence for 1 minute</button></section>
     <section id="mobBanner" hidden aria-label="Man overboard">
@@ -909,6 +920,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <div class="mob-actions"><button id="mobShow" type="button">Show MOB</button><button id="mobClear" type="button">Clear MOB</button></div>
     </section>
     <p id="setupNotice" class="status" hidden></p>
+    <section id="safetyNotice" hidden aria-label="Protect saved places">
+      <p id="installAdvice" hidden><strong>Add Helm to your Home Screen.</strong> Opened in Safari, your saved places can be deleted if Helm isn’t used for 7 days. Tap Safari’s Share button, then <strong>Add to Home Screen</strong>, and open Helm from that icon.</p>
+      <p id="backupAdvice" hidden></p>
+      <div class="safety-actions"><button id="safetyBackup" type="button" class="primary">Back up now</button><button id="safetyLater" type="button">Remind me later</button></div>
+    </section>
     <section id="proximityAlert" hidden aria-label="Nearby saved point">
       <span id="alertKind"></span><strong id="alertName"></strong><span id="alertDistance"></span><span id="alertMore"></span>
     </section>
@@ -990,6 +1006,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <p>Save a copy of your waypoints, hazards and fishing spots, or transfer them to another device.</p>
       <div class="settings-actions"><button id="export">Back up points</button><button id="import">Restore points</button></div>
       <input id="importFile" type="file" accept=".json,application/json" hidden>
+      <p id="backupStatus" class="status" role="status"></p>
     </details>
     <details class="chart-settings" id="voiceSettings">
       <summary>Voice &amp; demo</summary>
@@ -1018,7 +1035,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <p id="seamarkStatus" role="status">Seamarks off.</p>
       <p id="offlineStatus" role="status">Checking offline app…</p>
     </details>
-    <p class="reference-note">Helm 1.14.0 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
+    <p class="reference-note">Helm 1.15.0 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
   </div>
 </dialog>
 
@@ -1055,15 +1072,26 @@ let waypoints=[];
 try{waypoints=cleanPoints(JSON.parse(localStorage.getItem(KEY)||'[]'));}
 catch(e){alert('Saved points could not be loaded. Existing storage has not been changed. '+e.message);}
 function save(next=waypoints){
-  try{localStorage.setItem(KEY,JSON.stringify(next.map(({inside,...w})=>w)));return true;}
+  try{localStorage.setItem(KEY,JSON.stringify(next.map(({inside,...w})=>w)));storeSetting('helm.pointsChangedAt',String(Date.now()));setTimeout(updateSafety,0);return true;}
   catch(e){alert('Unable to save points. Back up your points and check device storage.');return false;}
 }
-document.getElementById('export').onclick=()=>{
-  const blob=new Blob([JSON.stringify({app:'Helm',version:2,points:waypoints.map(({inside,...w})=>w)},null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=url;a.download='helm-saved-places-'+new Date().toISOString().slice(0,10)+'.json';
-  document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-};
+async function backupPoints(){
+  if(!waypoints.length){alert('There are no saved places to back up yet.');return;}
+  const json=JSON.stringify({app:'Helm',version:2,points:waypoints.map(({inside,...w})=>w)},null,2);
+  const name='helm-saved-places-'+new Date().toISOString().slice(0,10)+'.json';
+  // iPad: the share sheet offers Save to Files, AirDrop or Mail. Elsewhere: an ordinary download.
+  try{
+    const file=new File([json],name,{type:'application/json'});
+    if(navigator.canShare?.({files:[file]})){
+      await navigator.share({files:[file],title:'Helm saved places'});
+      markBackedUp();return;
+    }
+  }catch(e){if(e.name==='AbortError')return;} // cancelled: not backed up
+  const url=URL.createObjectURL(new Blob([json],{type:'application/json'})),a=document.createElement('a');
+  a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+  markBackedUp();
+}
+document.getElementById('export').onclick=backupPoints;
 document.getElementById('import').onclick=()=>document.getElementById('importFile').click();
 document.getElementById('importFile').onchange=async e=>{
   const file=e.target.files[0];e.target.value='';if(!file)return;
@@ -1185,6 +1213,31 @@ document.getElementById('wpDelete').onclick=()=>{
  const next=waypoints.filter(w=>w!==editingPoint);
  if(save(next)){waypoints=next;closePointEditor();drawWaypoints();refreshPointAlerts();}
 };
+
+// ===================== 2b. Keeping saved places safe =====================
+// Safari can clear a website's storage after 7 days without use; Home Screen apps are exempt.
+const installedApp=navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
+if(navigator.storage?.persist)navigator.storage.persist().catch(()=>{});
+const settingTime=key=>{const n=Number(savedSetting(key));return Number.isFinite(n)&&n>0?n:0;};
+const ageText=t=>{const days=Math.floor((Date.now()-t)/86400000);return days<1?'today':days===1?'yesterday':days+' days ago';};
+function markBackedUp(){storeSetting('helm.lastBackup',String(Date.now()));storeSetting('helm.backupSnoozeUntil','0');updateSafety();}
+function updateSafety(){
+  const n=waypoints.length,last=settingTime('helm.lastBackup'),changed=settingTime('helm.pointsChangedAt');
+  const unsaved=n>0&&(last===0||changed>last);
+  const backupDue=unsaved&&(last===0||Date.now()-last>=14*86400000);
+  const snoozed=Date.now()<settingTime('helm.backupSnoozeUntil');
+  const installAdvice=!installedApp&&n>0;
+  document.getElementById('installAdvice').hidden=!installAdvice;
+  const backupAdvice=document.getElementById('backupAdvice');
+  backupAdvice.hidden=!backupDue;
+  backupAdvice.innerHTML=last?'<strong>Back up your saved places.</strong> Last backup '+ageText(last)+', and places have changed since.':'<strong>Back up your saved places.</strong> Your '+n+' saved place'+(n===1?' has':'s have')+' never been backed up. Save a copy to Files or iCloud Drive.';
+  document.getElementById('safetyBackup').hidden=!backupDue;
+  document.getElementById('safetyNotice').hidden=snoozed||!(installAdvice||backupDue);
+  document.getElementById('backupStatus').textContent=n+' saved place'+(n===1?'':'s')+'. Last backup: '+(last?ageText(last):'never')+
+    (unsaved&&last?' (changes since then)':'')+'. '+(installedApp?'Opened from the Home Screen, so Safari’s 7-day clean-up does not apply.':'Opened in the browser. Add Helm to the Home Screen to protect saved places.');
+}
+document.getElementById('safetyBackup').onclick=backupPoints;
+document.getElementById('safetyLater').onclick=()=>{storeSetting('helm.backupSnoozeUntil',String(Date.now()+7*86400000));updateSafety();};
 
 // ===================== 3. Voice =====================
 function clearSpeech(){if('speechSynthesis' in window)speechSynthesis.cancel();}
@@ -1918,7 +1971,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.14.0'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.15.0'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
@@ -1946,6 +1999,7 @@ async function registerOfflineApp(){
 window.addEventListener('online',showOfflineStatus);
 window.addEventListener('offline',showOfflineStatus);
 registerOfflineApp();
+updateSafety();
 
 </script>
 </body>
