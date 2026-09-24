@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.17.0">
+<html lang="en" data-helm-version="1.18.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<title>Helm — 1.17.0</title>
+<title>Helm — 1.18.0</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -880,6 +880,20 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   #offlineProgress{width:100%;height:14px;margin-top:10px;accent-color:var(--green)}
   #offlinePanelStatus{margin:0;padding:10px 16px;background:#253d32;border-bottom:1px solid var(--line)}
   #offlineSummary{margin-top:14px}
+  /* ---------- Go to a saved place ---------- */
+  #gotoBanner{padding:14px 20px;background:#1f3a2a;border-bottom:3px solid var(--green)}
+  #gotoBanner .goto-kicker{display:block;font-size:13px;letter-spacing:1px;color:var(--buff-dim)}
+  #gotoName{display:block;font-size:22px;overflow-wrap:anywhere}
+  .goto-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}
+  .goto-grid .goto-label{display:block;font-size:13px;color:var(--buff-dim)}
+  .goto-grid .goto-big{display:block;font-size:34px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+  #gotoBanner>span{display:block;font-size:16px;margin:3px 0}
+  #gotoBanner .goto-warn{color:#FFB38A;font-weight:700}
+  #gotoBanner .goto-arrived{color:var(--green);font-weight:700;font-size:18px}
+  .goto-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .goto-actions button{min-height:48px;font-size:16px;padding:0 8px}
+  .wp .row-buttons{display:flex;gap:6px}
+  #wpGoto{margin-top:10px;width:100%}
   /* ---------- Narrow screens (phone / portrait) ---------- */
   @media (max-width:820px){
     #app{grid-template-columns:1fr;grid-template-rows:1fr auto}
@@ -908,11 +922,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <input id="wpRadius" type="number" inputmode="numeric" value="200"></div>
     <div class="field"><label for="wpNotes">Notes (optional)</label><textarea id="wpNotes" maxlength="2000" rows="4" placeholder="Depth, species, bait, best tide…"></textarea></div>
     <div class="actions"><button id="wpCancel">Cancel</button><button id="wpSave" class="primary">Save place</button></div>
+    <button id="wpGoto" class="primary" hidden>Go to this place</button>
     <button id="wpDelete" hidden>Delete point</button>
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.17.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <header class="helm-header"><strong>Helm <small>1.18.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
     <nav class="main-tabs" aria-label="Main views"><button id="navTab" class="on" aria-pressed="true">Navigation</button><button id="anchorTab" aria-pressed="false">Anchor watch</button></nav>
     <section id="anchorBanner" hidden aria-label="Anchor watch status"><strong id="anchorState" role="status"></strong><span id="anchorDistance"></span><button id="anchorMute" hidden>Silence for 1 minute</button></section>
     <section id="mobBanner" hidden aria-label="Man overboard">
@@ -922,6 +937,19 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <span id="mobElapsed"></span>
       <span id="mobPos"></span>
       <div class="mob-actions"><button id="mobShow" type="button">Show MOB</button><button id="mobClear" type="button">Clear MOB</button></div>
+    </section>
+    <section id="gotoBanner" hidden aria-label="Going to a saved place">
+      <span class="goto-kicker">GOING TO</span>
+      <strong id="gotoName"></strong>
+      <div class="goto-grid">
+        <div><span class="goto-label">Distance</span><span id="gotoDist" class="goto-big">—</span></div>
+        <div><span class="goto-label">Steer</span><span id="gotoBrg" class="goto-big">—</span></div>
+      </div>
+      <span id="gotoSide"></span>
+      <span id="gotoEta"></span>
+      <span id="gotoXte"></span>
+      <span id="gotoHazard" class="goto-warn" hidden></span>
+      <div class="goto-actions"><button id="gotoSpeak" type="button">Say it</button><button id="gotoStop" type="button">Stop go to</button></div>
     </section>
     <p id="setupNotice" class="status" hidden></p>
     <p id="offlinePanelStatus" class="status" role="status" hidden></p>
@@ -1055,7 +1083,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <p id="seamarkStatus" role="status">Seamarks off.</p>
       <p id="offlineStatus" role="status">Checking offline app…</p>
     </details>
-    <p class="reference-note">Helm 1.17.0 · Reference charts only; not a substitute for current official navigation charts. Charts need internet except in areas saved offline. Blank areas do not mean clear water.</p>
+    <p class="reference-note">Helm 1.18.0 · Reference charts only; not a substitute for current official navigation charts. Charts need internet except in areas saved offline. Blank areas do not mean clear water.</p>
   </div>
 </dialog>
 
@@ -1157,8 +1185,9 @@ function renderList(){
       <div class="dot"></div>
       <div><div class="name">${esc(w.name)}</div>
         <div class="meta">${placeLabel(w.type)} · ${alertsEnabled(w)?'alert at '+w.radius+' m':'alerts off'} · <span class="dist" data-i="${i}">—</span></div>${w.notes?'<div class="notes">'+esc(w.notes)+'</div>':''}</div>
-      <button data-edit="${i}">Edit</button>
+      <div class="row-buttons">${w.type!=='hazard'?`<button data-goto="${i}">Go to</button>`:''}<button data-edit="${i}">Edit</button></div>
     </div>`).join('');
+  el.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>startGoto(waypoints[+b.dataset.goto]));
   el.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editPoint(waypoints[+b.dataset.edit]));
   el.querySelectorAll('.wp').forEach(r=>r.onclick=e=>{
     if(e.target.tagName==='BUTTON')return;
@@ -1184,6 +1213,7 @@ function openPointEditor(point=null){
  document.getElementById('wpCoordinates').textContent=fmtPos(pending.lat,pending.lng);
  document.getElementById('wpSave').textContent=point?'Save changes':'Save point';
  document.getElementById('wpDelete').hidden=!point;
+ document.getElementById('wpGoto').hidden=!point||point.type==='hazard';
  sheet.showModal();document.getElementById('wpName').focus();
 }
 function updatePlaceFields(){
@@ -1299,6 +1329,7 @@ function onFix(lat,lng,speedMs,heading,accuracy){
   checkAlerts(lat,lng);
   updateAnchor();
   updateMob();
+  updateGoto();
 }
 
 function fmtPos(lat,lng){
@@ -1711,6 +1742,102 @@ ae('mobClear').onclick=()=>{
 };
 try{const saved=JSON.parse(localStorage.getItem('helm.mob')||'null');if(validMob(saved)){mob=saved;mobSpokenAt=Date.now();drawMob();}}catch(e){}
 updateMob();setInterval(updateMob,1000);
+
+// ===================== Go to a saved place =====================
+let gotoTarget=null,gotoWarned=new Set();
+const gotoLayer=L.layerGroup().addTo(map);
+function validGoto(g){return g&&typeof g.name==='string'&&Number.isFinite(g.lat)&&Number.isFinite(g.lng)&&Number.isFinite(g.radius);}
+function saveGoto(){try{gotoTarget?localStorage.setItem('helm.goto',JSON.stringify(gotoTarget)):localStorage.removeItem('helm.goto');}catch(e){}}
+function toMetres(lat0,lng0,lat,lng){const k=Math.PI/180;return[(lng-lng0)*k*6371000*Math.cos(lat0*k),(lat-lat0)*k*6371000];}
+function hazardsOnLine(lat,lng,g){ // saved hazards whose warning circle the straight line to the target passes through
+ const [tx,ty]=toMetres(lat,lng,g.lat,g.lng),len2=tx*tx+ty*ty;if(len2<1)return[];
+ return waypoints.filter(w=>{
+  if(w.type!=='hazard')return false;
+  const [hx,hy]=toMetres(lat,lng,w.lat,w.lng),t=Math.max(0,Math.min(1,(hx*tx+hy*ty)/len2));
+  return Math.hypot(hx-tx*t,hy-ty*t)<w.radius;
+ });
+}
+function sideOf(bearing){ // where the target is relative to the bow, once moving
+ if(!lastFix||lastFix.course==null||!(lastFix.speed>0.5))return'';
+ const rel=((bearing-lastFix.course+540)%360)-180;
+ return Math.abs(rel)<10?'Dead ahead':Math.abs(rel)>170?'Astern':Math.round(Math.abs(rel))+'° to '+(rel<0?'port':'starboard');
+}
+function gotoNumbers(){
+ if(!gotoTarget||!lastFix)return null;
+ const d=distance(lastFix.lat,lastFix.lng,gotoTarget.lat,gotoTarget.lng),b=bearingTo(lastFix.lat,lastFix.lng,gotoTarget.lat,gotoTarget.lng);
+ let eta=null;
+ if(Number.isFinite(lastFix.speed)&&lastFix.speed>0.5){
+  const vmg=lastFix.course==null?lastFix.speed:lastFix.speed*Math.cos((lastFix.course-b)*Math.PI/180); // speed made good towards it
+  if(vmg>0.25)eta=d/vmg;
+ }
+ return{d,b,eta};
+}
+function speakGoto(prefix){
+ const n=gotoNumbers();
+ if(!n){speak((prefix||'')+gotoTarget.name+'. Waiting for GPS.');return;}
+ speak((prefix||'')+gotoTarget.name+'. '+spokenDist(n.d)+', steer '+spokenBearing(n.b)+'.'+(n.eta?' '+spokenEta(n.eta).replace(/^in /,'Arriving in ')+'.':''));
+}
+function startGoto(point){
+ if(!point||point.type==='hazard')return;
+ if(document.getElementById('sheet').open)closePointEditor();
+ gotoTarget={name:point.name,type:point.type,lat:point.lat,lng:point.lng,radius:point.radius,alerts:alertsEnabled(point),
+  startLat:lastFix?.lat??null,startLng:lastFix?.lng??null,arrived:false};
+ gotoWarned=new Set();saveGoto();
+ document.getElementById('panel').scrollTo({top:0,behavior:'smooth'}); // directions sit at the top of the panel
+ clearSpeech();speakGoto('Going to ');
+ updateGoto();
+ if(lastFix){following=false;setFollow();map.fitBounds([[lastFix.lat,lastFix.lng],[point.lat,point.lng]],{padding:[70,70],maxZoom:16});}
+ else map.setView([point.lat,point.lng],Math.max(map.getZoom(),14));
+}
+function stopGoto(){gotoTarget=null;saveGoto();gotoLayer.clearLayers();updateGoto();}
+function updateGoto(){
+ const banner=document.getElementById('gotoBanner');banner.hidden=!gotoTarget;
+ gotoLayer.clearLayers();if(!gotoTarget)return;
+ const g=gotoTarget,set=(id,t)=>document.getElementById(id).textContent=t;
+ set('gotoName',g.name);
+ L.circleMarker([g.lat,g.lng],{radius:26,color:'#7BC47F',weight:4,fill:false,interactive:false}).addTo(gotoLayer);
+ const n=gotoNumbers();
+ if(!n){
+  set('gotoDist','—');set('gotoBrg','—');set('gotoSide',mode==='off'?'Start GPS to get directions.':'Waiting for GPS…');
+  ['gotoEta','gotoXte'].forEach(id=>set(id,''));document.getElementById('gotoHazard').hidden=true;return;
+ }
+ if(g.startLat==null){g.startLat=lastFix.lat;g.startLng=lastFix.lng;saveGoto();}
+ L.polyline([[lastFix.lat,lastFix.lng],[g.lat,g.lng]],{color:'#3E9B45',weight:4,dashArray:'10 8',interactive:false}).addTo(gotoLayer);
+ set('gotoDist',fmtDist(n.d));set('gotoBrg',threeDigits(n.b)+'°');
+ // Arrival
+ if(!g.arrived&&n.d<=g.radius){
+  g.arrived=true;saveGoto();
+  if(!g.alerts)speak('Arrived at '+g.name+'.'); // places with alerts on already announce themselves
+ }
+ const side=sideOf(n.b);
+ set('gotoSide',g.arrived?'':side);
+ if(g.arrived){set('gotoEta','Arrived — within '+g.radius+' m.');document.getElementById('gotoEta').className='goto-arrived';}
+ else{
+  document.getElementById('gotoEta').className='';
+  set('gotoEta',n.eta?'Arrive in about '+fmtEta(n.eta)+' (at '+new Date(Date.now()+n.eta*1000).toLocaleTimeString('en-NZ',{hour:'numeric',minute:'2-digit'})+')':'Arrival time shows once you’re heading towards it.');
+ }
+ // Distance off the straight line from where the go to started
+ let xte='';
+ if(!g.arrived&&g.startLat!=null){
+  const [tx,ty]=toMetres(g.startLat,g.startLng,g.lat,g.lng),[bx,by]=toMetres(g.startLat,g.startLng,lastFix.lat,lastFix.lng),len=Math.hypot(tx,ty);
+  if(len>100){const off=(bx*ty-by*tx)/len;if(Math.abs(off)>=20)xte='Off track: '+fmtDist(Math.abs(off))+' to the '+(off>0?'right':'left')+' of the line from your start.';}
+  L.polyline([[g.startLat,g.startLng],[g.lat,g.lng]],{color:'#2A3238',weight:2,opacity:.6,interactive:false}).addTo(gotoLayer);
+ }
+ set('gotoXte',xte);
+ // Hazards on the direct line
+ const hz=g.arrived?[]:hazardsOnLine(lastFix.lat,lastFix.lng,g),hzEl=document.getElementById('gotoHazard');
+ hzEl.hidden=!hz.length;
+ if(hz.length){
+  hzEl.textContent='⚠ The direct line passes through hazard'+(hz.length>1?'s':'')+': '+hz.map(w=>w.name).join(', ')+'. Don’t steer straight there.';
+  const fresh=hz.filter(w=>!gotoWarned.has(w));
+  if(fresh.length){fresh.forEach(w=>gotoWarned.add(w));speak('Caution. The direct line to '+g.name+' passes hazard '+fresh.map(w=>w.name).join(' and ')+'.');}
+ }
+}
+document.getElementById('gotoSpeak').onclick=()=>{if(gotoTarget){clearSpeech();speakGoto();}};
+document.getElementById('gotoStop').onclick=stopGoto;
+document.getElementById('wpGoto').onclick=()=>{const p=editingPoint;if(p&&waypoints.includes(p))startGoto(p);};
+try{const saved=JSON.parse(localStorage.getItem('helm.goto')||'null');if(validGoto(saved))gotoTarget=saved;}catch(e){}
+updateGoto();setInterval(()=>{if(gotoTarget&&!lastFix)updateGoto();},2000);
 
 // ===================== 6. Reference charts =====================
 const chartSource=document.getElementById('chartSource');
@@ -2179,7 +2306,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.17.0'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.18.0'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
