@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.21.0">
+<html lang="en" data-helm-version="1.22.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<title>Helm — 1.21.0</title>
+<title>Helm — 1.22.0</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -944,7 +944,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.21.0</small></strong><div class="header-buttons"><button id="nightToggle" aria-pressed="false" title="Night mode">Night</button><button id="openSettings" aria-haspopup="dialog">Settings</button></div></header>
+    <header class="helm-header"><strong>Helm <small>1.22.0</small></strong><div class="header-buttons"><button id="nightToggle" aria-pressed="false" title="Night mode">Night</button><button id="openSettings" aria-haspopup="dialog">Settings</button></div></header>
     <nav class="main-tabs" aria-label="Main views"><button id="navTab" class="on" aria-pressed="true">Navigation</button><button id="anchorTab" aria-pressed="false">Anchor watch</button></nav>
     <section id="anchorBanner" hidden aria-label="Anchor watch status"><strong id="anchorState" role="status"></strong><span id="anchorDistance"></span><button id="anchorMute" hidden>Silence for 1 minute</button></section>
     <section id="mobBanner" hidden aria-label="Man overboard">
@@ -1028,18 +1028,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   <div class="setup-welcome">
     <div class="setup-kicker">FIRST-TIME SETUP</div>
     <h2 id="firstRunTitle">Set up My Helm charts</h2>
-    <p>My Helm does not include a shared LINZ key. Each boat owner needs an access key issued to their own LINZ Data Service account.</p>
+    <p><strong>Boating in US waters?</strong> NOAA charts are free and need no setup.</p>
+    <button id="setupUseNoaa" class="primary" type="button">Use US charts (NOAA)</button>
+    <h3>Boating in New Zealand waters?</h3>
+    <p>NZ charts come from LINZ. My Helm does not include a shared LINZ key. Each boat owner needs an access key issued to their own LINZ Data Service account.</p>
     <ol class="setup-steps">
       <li><a href="https://data.linz.govt.nz/my/api/" target="_blank" rel="noopener noreferrer"><strong>Get or view your LINZ access key</strong></a>. Keep the key private.</li>
       <li>Copy the key from LINZ and paste it below.</li>
-      <li>Select <strong>Save key and use LINZ charts</strong>. Charts need internet unless you save an area under <strong>Settings → Offline charts</strong>.</li>
+      <li>Select <strong>Save key and use NZ charts</strong>. Charts need internet unless you save an area under <strong>Settings → Offline charts</strong>.</li>
     </ol>
     <label for="setupLinzKey">Your LINZ Data Service access key</label>
     <input id="setupLinzKey" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" placeholder="Paste your LINZ key here">
     <label class="setup-check"><input id="setupRememberKey" type="checkbox" checked> Remember this key in this browser on this device</label>
     <p id="setupKeyStatus" role="status"></p>
-    <div class="setup-actions"><button id="setupStreet" type="button">Use street map for now</button><button id="setupUseLinz" class="primary" type="button">Save key and use LINZ charts</button></div>
-    <p class="setup-note">You can reopen this guide or change the key later in <strong>Settings → LINZ account</strong>. LINZ keys are never included in Saved Places backups.</p>
+    <div class="setup-actions"><button id="setupStreet" type="button">Use street map for now</button><button id="setupUseLinz" class="primary" type="button">Save key and use NZ charts</button></div>
+    <p class="setup-note">You can reopen this guide or change the key later in <strong>Settings → NZ charts: LINZ account</strong>. LINZ keys are never included in Saved Places backups.</p>
   </div>
 </dialog>
 <dialog id="settingsDialog" aria-labelledby="settingsTitle">
@@ -1048,7 +1051,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <details class="chart-settings" id="mapSettings" open>
       <summary>Charts</summary>
       <label for="chartSource">Background</label>
-      <select id="chartSource"><option value="street">Street map</option><option value="linz">LINZ reference charts</option></select>
+      <select id="chartSource"><option value="street">Street map</option><option value="linz">NZ charts — LINZ (NZ waters only)</option><option value="noaa">US charts — NOAA (US waters only)</option></select>
       <div id="mapLinzControls" hidden>
         <label for="chartMode">Which chart</label>
         <select id="chartMode"><option value="auto">Automatic (recommended)</option><option value="manual">A specific chart</option></select>
@@ -1067,8 +1070,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <details class="chart-settings" id="areaSettings">
       <summary>Jump to an area</summary>
       <label for="chartArea">Move the map to</label>
-      <select id="chartArea"><option value="" selected>Choose an area…</option><option value="nz">All New Zealand</option><option value="northland">Northland / Bay of Islands</option><option value="gulf">Hauraki Gulf</option><option value="tauranga">Tauranga</option><option value="gisborne">Gisborne</option><option value="napier">Napier</option><option value="taranaki">New Plymouth</option><option value="wellington">Wellington / Cook Strait</option><option value="sounds">Marlborough Sounds</option><option value="nelson">Nelson / Tasman Bay</option><option value="westport">Westport</option><option value="lyttelton">Lyttelton / Banks Peninsula</option><option value="otago">Otago Harbour</option><option value="fiordland">Fiordland</option><option value="stewart">Stewart Island / Rakiura</option><option value="chatham">Chatham Islands</option><option value="auckland">Auckland Harbour</option><option value="kawau">Kawau Island</option><option value="waiheke">Waiheke Island</option><option value="barrier">Great Barrier Island</option><option value="mercury">Mercury Islands</option></select>
+      <select id="chartArea"><option value="" selected>Choose an area…</option><optgroup label="New Zealand"><option value="nz">All New Zealand</option><option value="northland">Northland / Bay of Islands</option><option value="gulf">Hauraki Gulf</option><option value="tauranga">Tauranga</option><option value="gisborne">Gisborne</option><option value="napier">Napier</option><option value="taranaki">New Plymouth</option><option value="wellington">Wellington / Cook Strait</option><option value="sounds">Marlborough Sounds</option><option value="nelson">Nelson / Tasman Bay</option><option value="westport">Westport</option><option value="lyttelton">Lyttelton / Banks Peninsula</option><option value="otago">Otago Harbour</option><option value="fiordland">Fiordland</option><option value="stewart">Stewart Island / Rakiura</option><option value="chatham">Chatham Islands</option><option value="auckland">Auckland Harbour</option><option value="kawau">Kawau Island</option><option value="waiheke">Waiheke Island</option><option value="barrier">Great Barrier Island</option><option value="mercury">Mercury Islands</option></optgroup><optgroup label="United States"><option value="sandiego">San Diego Bay</option><option value="catalina">Catalina Island</option><option value="losangeles">Los Angeles / Long Beach</option><option value="sanfrancisco">San Francisco Bay</option><option value="puget">Puget Sound / Seattle</option><option value="chesapeake">Chesapeake Bay</option><option value="longisland">Long Island Sound</option><option value="miami">Miami / Biscayne Bay</option><option value="keys">Florida Keys</option><option value="oahu">Hawaii — Oʻahu</option></optgroup></select>
       <p>The map moves as soon as you pick an area.</p>
+      <p id="areaHint" class="status" role="status" hidden></p>
     </details>
     <details class="chart-settings" id="pointsSettings">
       <summary>Saved points</summary>
@@ -1086,7 +1090,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     </details>
     <details class="chart-settings" id="offlineSettings">
       <summary>Offline charts</summary>
-      <p>Save LINZ charts on this device so they still show with no mobile signal. First close Settings and move the map so the screen shows the area you want. Everything on screen is saved, down to each chart’s full detail.</p>
+      <p>Save NZ (LINZ) or US (NOAA) charts on this device so they still show with no mobile signal. First close Settings and move the map so the screen shows the area you want. Everything on screen is saved, down to each chart’s full detail.</p>
       <button id="offlineDownload" class="primary">Download charts for area on screen</button>
       <progress id="offlineProgress" max="1" value="0" hidden></progress>
       <p id="offlineChartStatus" class="status" role="status"></p>
@@ -1094,10 +1098,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <label><input id="offlineShowAreas" type="checkbox" checked> Outline saved areas on the map</label>
       <p id="offlineSummary" class="status">Checking saved charts…</p>
       <button id="offlineDelete">Delete all offline charts</button>
-      <p>Offline copies don’t update themselves, and LINZ corrects charts over time. Delete and download again every few months. The street map and OpenSeaMap buoys are not saved offline.</p>
+      <p>Offline copies don’t update themselves, and LINZ and NOAA correct their charts regularly. Delete and download again every few months. The street map and OpenSeaMap buoys are not saved offline.</p>
     </details>
     <details class="chart-settings" id="advancedSettings">
-      <summary>LINZ account (set up once)</summary>
+      <summary>NZ charts: LINZ account (set up once)</summary>
+      <p>Only needed for New Zealand charts. US charts from NOAA need no account or key.</p>
       <label for="linzKey">Your LINZ Data Service access key</label>
       <input id="linzKey" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" placeholder="Paste key here on this device">
       <label><input id="rememberKey" type="checkbox"> Remember key on this device</label>
@@ -1112,7 +1117,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <h3>Troubleshooting</h3>
       <p id="offlineStatus" class="status" role="status">Checking offline app…</p>
     </details>
-    <p class="reference-note">Helm 1.21.0 · Reference charts only; not a substitute for current official navigation charts. Charts need internet except in areas saved offline. Blank areas do not mean clear water.</p>
+    <p class="reference-note">Helm 1.22.0 · Reference charts only; not a substitute for current official navigation charts. Charts need internet except in areas saved offline. Blank areas do not mean clear water.</p>
   </div>
 </dialog>
 
@@ -1322,7 +1327,7 @@ document.getElementById('safetyLater').onclick=()=>{storeSetting('helm.backupSno
 function clearSpeech(){if('speechSynthesis' in window)speechSynthesis.cancel();}
 function speak(text){
   if(!('speechSynthesis' in window))return;
-  const u=new SpeechSynthesisUtterance(text); u.lang='en-NZ'; u.rate=0.95;
+  const u=new SpeechSynthesisUtterance(text); u.lang=navigator.language||'en-NZ'; u.rate=0.95;
   speechSynthesis.speak(u);
 }
 document.getElementById('testVoice').onclick=()=>speak('Voice check. Approaching Rangitoto beacon, 200 metres.');
@@ -1748,7 +1753,7 @@ function updateMob(){
  document.getElementById('mob')?.classList.toggle('active',!!mob);
  if(!mob)return;
  const elapsed=Math.max(0,Math.floor((Date.now()-mob.time)/1000));
- ae('mobElapsed').textContent=(mob.demo?'DEMO · ':'')+'Marked at '+new Date(mob.time).toLocaleTimeString('en-NZ',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+' ('+fmtElapsed(elapsed)+' ago)';
+ ae('mobElapsed').textContent=(mob.demo?'DEMO · ':'')+'Marked at '+new Date(mob.time).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit',second:'2-digit'})+' ('+fmtElapsed(elapsed)+' ago)';
  ae('mobPos').textContent=fmtPos(mob.lat,mob.lng);
  if(!lastFix){
   ae('mobDistance').textContent='—';
@@ -1847,7 +1852,7 @@ function updateGoto(){
  if(g.arrived){set('gotoEta','Arrived — within '+g.radius+' m.');document.getElementById('gotoEta').className='goto-arrived';}
  else{
   document.getElementById('gotoEta').className='';
-  set('gotoEta',n.eta?'Arrive in about '+fmtEta(n.eta)+' (at '+new Date(Date.now()+n.eta*1000).toLocaleTimeString('en-NZ',{hour:'numeric',minute:'2-digit'})+')':'Arrival time shows once you’re heading towards it.');
+  set('gotoEta',n.eta?'Arrive in about '+fmtEta(n.eta)+' (at '+new Date(Date.now()+n.eta*1000).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})+')':'Arrival time shows once you’re heading towards it.');
  }
  // Distance off the straight line from where the go to started
  let xte='';
@@ -1890,7 +1895,7 @@ tripAuto.checked=savedSetting('helm.tripAuto')!=='false';
 tripAuto.onchange=()=>{storeSetting('helm.tripAuto',String(tripAuto.checked));if(!tripAuto.checked)finishTrip();renderTrips();};
 const fmtNm=d=>(d/1852).toFixed(d<18520?2:1)+' nm';
 function fmtDuration(ms){const m=Math.round(ms/60000);return m<60?m+' min':Math.floor(m/60)+' h '+String(m%60).padStart(2,'0')+' min';}
-const tripTitle=t=>new Date(t.start).toLocaleString('en-NZ',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
+const tripTitle=t=>new Date(t.start).toLocaleString(undefined,{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
 function tripMeta(t){
  const kn=v=>(v*1.94384).toFixed(1)+' kn',avg=t.moving>60?t.distance/t.moving:0;
  return fmtNm(t.distance)+' · '+fmtDuration(t.end-t.start)+(avg?' · avg '+kn(avg):'')+(t.maxSpeed?' · max '+kn(t.maxSpeed):'');
@@ -1997,7 +2002,7 @@ document.getElementById('markHere').onclick=()=>{
  if(!fix){alert(mode==='off'?'Tap Start GPS first, then Mark here saves the boat’s position.':'Waiting for a GPS position. Try again in a moment.');return;}
  stopPlacing();pending={lat:fix.lat,lng:fix.lng};openPointEditor();
  const name=document.getElementById('wpName');
- name.value='Mark '+new Date().toLocaleTimeString('en-NZ',{hour:'numeric',minute:'2-digit'});name.select(); // save straight away, or type a name
+ name.value='Mark '+new Date().toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});name.select(); // save straight away, or type a name
  document.getElementById('pointTitle').textContent='Mark boat position';
 };
 
@@ -2018,7 +2023,7 @@ function updateChartForm(){
  document.getElementById('specificChart').hidden=!manual;
  document.getElementById('chartModeHelp').textContent=manual?'Only the chart you pick is shown, at every zoom.':'Automatic shows the most detailed chart as you move and zoom.';
 }
-chartSource.onchange=()=>{updateChartForm();applyChart({recenter:false});};
+chartSource.onchange=()=>{updateChartForm();applyChart({recenter:false,nudge:true});};
 function monitorTiles(layer,label,target){
   let failed=false;
   const current=()=>target===chartStatus?backgroundLayer===layer:seamarkLayer===layer;
@@ -2106,6 +2111,9 @@ populateCharts();document.getElementById('chartSearch').oninput=populateCharts;
 if(nationalCharts.length)document.getElementById('catalogueStatus').textContent=nationalCharts.length+' chart records restored from this device. Refresh online for catalogue changes.';
 const chartLayers=new Map();
 let appliedChart=null,appliedKey='';
+const NOAA_TILES='https://gis.charttools.noaa.gov/arcgis/rest/services/MarineChart_Services/NOAACharts/MapServer/tile/{z}/{y}/{x}';
+const US_WATERS=[[-126,23,-65,50],[-180,50,-129,72],[172,50,180,56],[-162,18,-153,23],[-68,17,-64,19],[144,13,146,21],[-171,-15,-169,-14]];
+const inUSWaters=(lat,lng)=>US_WATERS.some(b=>lng>=b[0]&&lng<=b[2]&&lat>=b[1]&&lat<=b[3]);
 function reportCharts(){
  if(!appliedChart)return;
  const entries=[...chartLayers.values()];
@@ -2209,6 +2217,15 @@ function applyChart(options={}){
   const remember=document.getElementById('rememberKey').checked;
   const saved=remember?storeSetting('helm.linzKey',key):removeSetting('helm.linzKey');
   if(!saved)alert('The chart can be used now, but the key preference could not be saved.');
+ }else if(chartSource.value==='noaa'){
+  backgroundLayer=L.tileLayer(NOAA_TILES,{maxZoom:18,maxNativeZoom:16,
+   attribution:'Charts: <a href="https://nauticalcharts.noaa.gov/">NOAA Office of Coast Survey</a> · Reference only'});
+  monitorTiles(backgroundLayer,'US charts (NOAA)',chartStatus);
+  chartStatus.textContent='US charts (NOAA) — requesting tiles…';backgroundLayer.addTo(map);
+  const c=map.getCenter(),hint=document.getElementById('areaHint');
+  if(options.nudge&&!inUSWaters(c.lat,c.lng)){ // point the way if the map is showing somewhere else
+   hint.textContent='NOAA charts only cover US waters. Pick a US area above.';hint.hidden=false;document.getElementById('areaSettings').open=true;
+  }
  }else{
   backgroundLayer=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
    maxZoom:18,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'});
@@ -2247,9 +2264,11 @@ function showSelectedChart(){
  map.setView(chart.center,chart.view);
 }
 document.getElementById('showChart').onclick=showSelectedChart;
-const AREAS={nz:[-41,173,5],northland:[-35.2,174.15,11],tauranga:[-37.65,176.17,12],gisborne:[-38.7,178.05,12],napier:[-39.48,176.92,12],taranaki:[-39.05,174.02,12],wellington:[-41.3,174.8,11],sounds:[-41.15,174.1,11],nelson:[-41.2,173.2,11],westport:[-41.75,171.6,12],lyttelton:[-43.65,172.75,11],otago:[-45.82,170.62,12],fiordland:[-45.3,166.9,9],stewart:[-46.95,168,10],chatham:[-43.9,-176.5,10],gulf:[-36.45,175.2,9],auckland:[-36.805,174.845,14],kawau:[-36.43,174.84,12],waiheke:[-36.8,175.1,12],barrier:[-36.2,175.42,12],mercury:[-36.64,175.82,12]};
+const AREAS={nz:[-41,173,5],northland:[-35.2,174.15,11],tauranga:[-37.65,176.17,12],gisborne:[-38.7,178.05,12],napier:[-39.48,176.92,12],taranaki:[-39.05,174.02,12],wellington:[-41.3,174.8,11],sounds:[-41.15,174.1,11],nelson:[-41.2,173.2,11],westport:[-41.75,171.6,12],lyttelton:[-43.65,172.75,11],otago:[-45.82,170.62,12],fiordland:[-45.3,166.9,9],stewart:[-46.95,168,10],chatham:[-43.9,-176.5,10],gulf:[-36.45,175.2,9],auckland:[-36.805,174.845,14],kawau:[-36.43,174.84,12],waiheke:[-36.8,175.1,12],barrier:[-36.2,175.42,12],mercury:[-36.64,175.82,12],
+ sandiego:[32.68,-117.19,12],catalina:[33.38,-118.42,11],losangeles:[33.73,-118.22,12],sanfrancisco:[37.8,-122.38,11],puget:[47.6,-122.45,10],
+ chesapeake:[38.3,-76.3,9],longisland:[41.1,-72.8,10],miami:[25.72,-80.2,11],keys:[24.7,-81.3,9],oahu:[21.45,-157.95,10]};
 document.getElementById('chartArea').onchange=e=>{
- const area=AREAS[e.target.value];e.target.value='';if(!area)return;
+ const area=AREAS[e.target.value];e.target.value='';if(!area)return;document.getElementById('areaHint').hidden=true;
  following=false;setFollow();map.setView([area[0],area[1]],area[2]);settingsDialog.close();
 };
 document.getElementById('seamarks').onchange=e=>{
@@ -2270,7 +2289,8 @@ if(storedChart==='auto'||CHARTS.some(c=>c.id===storedChart))chartId.value=stored
 // Restore only validated preferences. A missing key never triggers a LINZ request.
 function restorePreferences(){
  const source=savedSetting('helm.chartSource');
- chartSource.value=source==='linz'?'linz':'street';updateChartForm();
+ chartSource.value=['linz','noaa'].includes(source)?source:'street';updateChartForm();
+ if(chartSource.value==='noaa')applyChart({recenter:false,persist:false});
  if(chartSource.value==='linz'){
   if(/^[A-Za-z0-9_-]{10,128}$/.test(linzKey.value.trim()))applyChart({recenter:false,persist:false});
   else{
@@ -2310,6 +2330,10 @@ document.getElementById('setupUseLinz').onclick=()=>{
  storeSetting('helm.setupComplete','true');
  firstRunDialog.close();
 };
+document.getElementById('setupUseNoaa').onclick=()=>{
+ chartSource.value='noaa';chartId.value='auto';updateChartForm();applyChart({nudge:true});
+ storeSetting('helm.setupComplete','true');firstRunDialog.close();
+};
 document.getElementById('setupStreet').onclick=()=>{
  chartSource.value='street';updateChartForm();applyChart();
  storeSetting('helm.setupComplete','true');
@@ -2342,6 +2366,13 @@ function nativeZoom(c){ // the zoom where a chart shows its full printed detail
  const scale=c.scale||CORE_CHARTS.find(x=>x.id===c.id)?.scale;
  const z=scale?Math.round(Math.log2(559082264/scale))+1:(c.view||10)+5;
  return Math.max(8,Math.min(17,z));
+}
+const noaaTileKey=(z,x,y)=>'https://helm-offline.invalid/noaa/'+z+'/'+x+'/'+y+'.png';
+function planNoaaTiles(area){ // one seamless US chart: detail down to 4 zoom steps below the current view
+ const zNow=map.getZoom(),zMin=Math.max(3,Math.min(zNow-2,10)),zMax=Math.min(16,zNow+4),jobs=[];
+ for(let z=zMin;z<=zMax;z++){const r=tileRange(area,z);
+  for(let x=r.x0;x<=r.x1;x++)for(let y=r.y0;y<=r.y1;y++){jobs.push({noaa:true,z,x,y});if(jobs.length>MAX_OFFLINE_TILES)return jobs;}}
+ return jobs;
 }
 const offlineTileKey=(id,z,x,y)=>'https://helm-offline.invalid/linz/'+id+'/'+z+'/'+x+'/'+y+'.png';
 const linzTileURL=(key,id,z,x,y)=>'https://tiles-'+'abcd'[(x+y)%4]+'.data-cdn.linz.govt.nz/services;key='+encodeURIComponent(key)+'/tiles/v4/layer='+id+'/EPSG:3857/'+z+'/'+x+'/'+y+'.png';
@@ -2392,14 +2423,15 @@ function setOfflineBusy(busy){
 }
 document.getElementById('offlineDownload').onclick=async()=>{
  if(offlineJob)return;
- const key=(appliedKey||linzKey.value).trim();
- if(chartSource.value!=='linz'||!appliedChart||!/^[A-Za-z0-9_-]{10,128}$/.test(key)){offlineStatusEl.textContent='Choose LINZ reference charts under Settings → Charts first (with your key entered).';return;}
- if(!nationalCharts.length){offlineStatusEl.textContent='Load the NZ chart catalogue first (Settings → LINZ account → Load / refresh NZ chart catalogue). It tells Helm exactly where each chart has detail, so only useful tiles are saved.';return;}
+ const key=(appliedKey||linzKey.value).trim(),noaa=chartSource.value==='noaa';
+ if(!noaa&&(chartSource.value!=='linz'||!appliedChart||!/^[A-Za-z0-9_-]{10,128}$/.test(key))){offlineStatusEl.textContent='Choose NZ or US charts under Settings → Charts first (NZ charts also need your LINZ key).';return;}
+ if(!noaa&&!nationalCharts.length){offlineStatusEl.textContent='Load the NZ chart catalogue first (Settings → LINZ account → Load / refresh NZ chart catalogue). It tells Helm exactly where each chart has detail, so only useful tiles are saved.';return;}
  if(!('caches' in window)){offlineStatusEl.textContent='This browser cannot save charts offline.';return;}
  if(!navigator.onLine){offlineStatusEl.textContent='Connect to the internet (Wi-Fi is best) to download charts.';return;}
  const b=map.getBounds(),area=[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()];
- const jobs=planOfflineTiles(area);
- if(!jobs.length){offlineStatusEl.textContent='No LINZ charts cover the area on screen. Move the map over New Zealand waters.';return;}
+ if(noaa&&!inUSWaters(map.getCenter().lat,map.getCenter().lng)){offlineStatusEl.textContent='NOAA charts only cover US waters. Move the map to the US area you want first.';return;}
+ const jobs=noaa?planNoaaTiles(area):planOfflineTiles(area);
+ if(!jobs.length){offlineStatusEl.textContent='No NZ charts cover the area on screen. Move the map over New Zealand waters.';return;}
  if(jobs.length>MAX_OFFLINE_TILES){offlineStatusEl.textContent='That area is too large to save in one go (over '+MAX_OFFLINE_TILES.toLocaleString()+' tiles). Zoom in a step or two and download it in smaller pieces.';return;}
  const mb=Math.max(1,Math.round(jobs.length*20/1024));
  if(!confirm('Save about '+jobs.length.toLocaleString()+' chart tiles (roughly '+mb+' MB) for the area on screen?\n\nUse Wi-Fi if you can. Keep Helm open on screen until it finishes. If it stops, just press Download again and it carries on where it left off.'))return;
@@ -2414,14 +2446,14 @@ document.getElementById('offlineDownload').onclick=async()=>{
  try{
   const cache=await caches.open(TILE_CACHE);
   const fetchTile=async t=>{
-   const k=offlineTileKey(t.id,t.z,t.x,t.y);
+   const k=t.noaa?noaaTileKey(t.z,t.x,t.y):offlineTileKey(t.id,t.z,t.x,t.y);
    if(await cache.match(k)){already++;return;}
-   const url=linzTileURL(key,t.id,t.z,t.x,t.y);
+   const url=t.noaa?NOAA_TILES.replace('{z}',t.z).replace('{y}',t.y).replace('{x}',t.x):linzTileURL(key,t.id,t.z,t.x,t.y);
    for(let attempt=0;attempt<2&&!job.cancelled;attempt++){
     try{
      {
       const r=await fetch(url,{credentials:'omit'});
-      if(r.status===401||r.status===403){stopReason='LINZ refused the access key. Check your key under Settings → LINZ account.';job.cancelled=true;return;}
+      if(r.status===401||r.status===403){stopReason=t.noaa?'NOAA refused the download. Try again later.':'LINZ refused the access key. Check your key under Settings → NZ charts: LINZ account.';job.cancelled=true;return;}
       if(r.status===404||r.status===204){empty++;return;} // no chart detail in this square
       if(!r.ok)throw Error('HTTP '+r.status);
       const blob=await r.blob();
@@ -2430,7 +2462,7 @@ document.getElementById('offlineDownload').onclick=async()=>{
     }catch(e){
      if(e.name==='QuotaExceededError'){stopReason='This device has no more room for Helm’s charts. Delete some offline charts or free up storage.';job.cancelled=true;return;}
      // Repeated connection-level failures before anything saves: LINZ is blocking direct downloads (or the network is down).
-     if(e instanceof TypeError&&saved===0&&already===0&&++corsFails>=6){stopReason=navigator.onLine?'LINZ did not allow Helm to download its chart images directly, so nothing was saved. Charts still work online.':'The internet connection dropped. Reconnect and press Download again.';job.cancelled=true;return;}
+     if(e instanceof TypeError&&saved===0&&already===0&&++corsFails>=6){stopReason=navigator.onLine?'The chart service did not allow Helm to download its chart images directly, so nothing was saved. Charts still work online.':'The internet connection dropped. Reconnect and press Download again.';job.cancelled=true;return;}
      await new Promise(r=>setTimeout(r,800));
     }
    }
@@ -2440,7 +2472,7 @@ document.getElementById('offlineDownload').onclick=async()=>{
   await Promise.all([worker(),worker(),worker(),worker()]);
  }catch(e){stopReason=stopReason||'Download stopped: '+e.message;}
  if(saved+already>0){
-  const areas=offlineAreas();areas.push({bounds:area.map(v=>Math.round(v*1e5)/1e5),date:Date.now(),tiles:saved+already});
+  const areas=offlineAreas();areas.push({bounds:area.map(v=>Math.round(v*1e5)/1e5),date:Date.now(),tiles:saved+already,source:noaa?'noaa':'linz'});
   storeSetting('helm.offlineAreas',JSON.stringify(areas.slice(-50)));drawOfflineAreas();
  }
  lock?.release?.().catch?.(()=>{});
@@ -2474,7 +2506,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.21.0'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.22.0'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
