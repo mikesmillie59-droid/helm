@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.15.0">
+<html lang="en" data-helm-version="1.16.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<title>Helm — 1.15.0</title>
+<title>Helm — 1.16.0</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -908,7 +908,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.15.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <header class="helm-header"><strong>Helm <small>1.16.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
     <nav class="main-tabs" aria-label="Main views"><button id="navTab" class="on" aria-pressed="true">Navigation</button><button id="anchorTab" aria-pressed="false">Anchor watch</button></nav>
     <section id="anchorBanner" hidden aria-label="Anchor watch status"><strong id="anchorState" role="status"></strong><span id="anchorDistance"></span><button id="anchorMute" hidden>Silence for 1 minute</button></section>
     <section id="mobBanner" hidden aria-label="Man overboard">
@@ -1011,6 +1011,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <details class="chart-settings" id="voiceSettings">
       <summary>Voice &amp; demo</summary>
       <div class="settings-actions"><button id="testVoice">Test voice</button><button id="demo">Demo run</button></div>
+      <label for="lookahead">Warn of hazards ahead</label>
+      <select id="lookahead"><option value="0">Off</option><option value="60">1 minute ahead</option><option value="120">2 minutes ahead</option><option value="180" selected>3 minutes ahead</option><option value="300">5 minutes ahead</option></select>
+      <p>Speaks a warning when your current course will take you into a saved hazard’s circle within this time. Works once the boat is moving at about 1.5 knots or more. The dashed line on the map shows where you’ll be.</p>
     </details>
     <details class="chart-settings" id="advancedSettings">
       <summary>Advanced &amp; troubleshooting</summary>
@@ -1035,7 +1038,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <p id="seamarkStatus" role="status">Seamarks off.</p>
       <p id="offlineStatus" role="status">Checking offline app…</p>
     </details>
-    <p class="reference-note">Helm 1.15.0 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
+    <p class="reference-note">Helm 1.16.0 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
   </div>
 </dialog>
 
@@ -1260,6 +1263,7 @@ document.getElementById('follow').onclick=()=>{following=!following;setFollow();
 map.on('dragstart',()=>{following=false;setFollow();});
 
 function onFix(lat,lng,speedMs,heading,accuracy){
+  ({speed:speedMs,heading}=fillMotion(lat,lng,speedMs,heading,accuracy));
   const course=heading!=null&&!isNaN(heading)?heading:null;
   lastFix={lat,lng,accuracy,course,speed:speedMs};
   lastKnown={lat,lng,accuracy,time:Date.now(),demo:mode==='demo'};
@@ -1306,9 +1310,32 @@ function checkAlerts(lat,lng,notify=true){
       alerts.push({hazard:w.type==='hazard',text:(w.type==='hazard'?'Caution. Hazard. ':'Approaching ')+w.name+', '+Math.round(d/10)*10+' metres.'});
     } else if(d>w.radius*1.3&&w.inside){ w.inside=false; }   // 30% buffer so it doesn't re-trigger on the edge
   });
+  // --- Hazards ahead on the current course ---
+  const look=lookaheadSeconds(),ahead=[];
+  const moving=look>0&&lastFix&&lastFix.course!=null&&Number.isFinite(lastFix.speed)&&lastFix.speed>=0.77; // ≈1.5 kn
+  waypoints.forEach(w=>{
+    if(w.type!=='hazard')return;
+    const hit=moving&&!w.inside?hazardOnCourse(lat,lng,lastFix.course,lastFix.speed,w):null;
+    const state=aheadState.get(w)||{warned:false,clearSince:0};aheadState.set(w,state);
+    if(hit&&hit.eta<=look){
+      ahead.push({w,...hit});state.clearSince=0;
+      if(notify&&!state.warned){state.warned=true;alerts.push({hazard:true,text:'Caution. Hazard ahead. '+w.name+', '+spokenEta(hit.eta)+'.'});}
+    }else if(notify&&state.warned){ // only warn again after the course has been clear for a minute
+      if(!state.clearSince)state.clearSince=Date.now();
+      else if(Date.now()-state.clearSince>60000){state.warned=false;state.clearSince=0;}
+    }
+  });
+  drawCourseLine(lat,lng,moving?look:0,ahead.length>0);
   if(notify&&!anchorActive)alerts.filter(a=>!mob||a.hazard).sort((a,b)=>Number(b.hazard)-Number(a.hazard)).forEach(a=>speak(a.text));
   nearby.sort((a,b)=>Number(b.w.type==='hazard')-Number(a.w.type==='hazard')||a.d-b.d);
-  const banner=document.getElementById('proximityAlert');banner.hidden=!nearby.length;
+  const banner=document.getElementById('proximityAlert');banner.hidden=!nearby.length&&!ahead.length;
+  if(!nearby.length&&ahead.length){
+   ahead.sort((a,b)=>a.eta-b.eta);const {w,eta,pass}=ahead[0];banner.classList.add('hazard');
+   document.getElementById('alertKind').textContent=(mode==='demo'?'DEMO · ':'')+'CAUTION · HAZARD AHEAD';
+   document.getElementById('alertName').textContent=w.name;
+   document.getElementById('alertDistance').textContent='Reached in about '+fmtEta(eta)+' on this course';
+   document.getElementById('alertMore').textContent=(pass<10?'Course runs straight over it':'Course passes '+Math.round(pass)+' m from it')+' · warning circle '+w.radius+' m'+(ahead.length>1?' · '+(ahead.length-1)+' more ahead':'');
+  }
   if(nearby.length){
    const {w,d}=nearby[0],hazard=w.type==='hazard';banner.classList.toggle('hazard',hazard);
    document.getElementById('alertKind').textContent=(mode==='demo'?'DEMO · ':'')+(hazard?'CAUTION · SAVED HAZARD':w.type==='fishing'?'NEARBY FISHING SPOT':'NEARBY WAYPOINT');
@@ -1319,11 +1346,51 @@ function checkAlerts(lat,lng,notify=true){
   document.getElementById('nearest').textContent=nearest?nearest.w.name+' '+fmtDist(nearest.d):'—';
 }
 const fmtDist=d=>d<1000?Math.round(d)+' m':(d/1852).toFixed(2)+' nm';
+let aheadState=new WeakMap(),courseLine=null;
+const lookaheadEl=document.getElementById('lookahead');
+{const saved=savedSetting('helm.lookahead');if(['0','60','120','180','300'].includes(saved))lookaheadEl.value=saved;}
+lookaheadEl.onchange=()=>{storeSetting('helm.lookahead',lookaheadEl.value);aheadState=new WeakMap();refreshPointAlerts();};
+function lookaheadSeconds(){return Number(lookaheadEl.value)||0;}
+// When will the current course enter a hazard's circle? Flat-water maths, accurate over a few kilometres.
+function hazardOnCourse(lat,lng,course,speed,w){
+  const k=Math.PI/180,R=6371000;
+  const x=(w.lng-lng)*k*R*Math.cos(lat*k),y=(w.lat-lat)*k*R;       // hazard, metres east/north of the boat
+  const vx=speed*Math.sin(course*k),vy=speed*Math.cos(course*k),v2=vx*vx+vy*vy;
+  const tClosest=(x*vx+y*vy)/v2;if(tClosest<=0)return null;         // behind us or moving away
+  const cx=x-vx*tClosest,cy=y-vy*tClosest,pass2=cx*cx+cy*cy,r2=w.radius*w.radius;
+  if(pass2>=r2)return null;                                           // course misses the circle
+  const eta=tClosest-Math.sqrt(r2-pass2)/Math.sqrt(v2);
+  return eta>0?{eta,pass:Math.sqrt(pass2)}:null;
+}
+const fmtEta=t=>t<60?'under a minute':Math.round(t/60)+' min';
+const spokenEta=t=>t<60?'in under a minute':'in about '+Math.round(t/60)+' minute'+(Math.round(t/60)===1?'':'s');
+function drawCourseLine(lat,lng,seconds,danger){
+  if(!seconds||!lastFix){if(courseLine){map.removeLayer(courseLine);courseLine=null;}return;}
+  const k=Math.PI/180,dist=lastFix.speed*seconds,c=lastFix.course*k;
+  const end=[lat+dist*Math.cos(c)/111320,lng+dist*Math.sin(c)/(111320*Math.cos(lat*k))];
+  if(!courseLine)courseLine=L.polyline([],{weight:3,dashArray:'4 8',interactive:false}).addTo(map);
+  courseLine.setLatLngs([[lat,lng],end]).setStyle({color:danger?'#F26A21':'#2A3238',opacity:danger?1:.7});
+}
+// Fill in speed and course from recent positions when the iPad doesn't report them.
+let recentFixes=[];
+function fillMotion(lat,lng,speed,heading,accuracy){
+  const now=Date.now();recentFixes.push({lat,lng,t:now});recentFixes=recentFixes.filter(f=>now-f.t<=30000);
+  const haveSpeed=Number.isFinite(speed)&&speed>=0,haveCourse=Number.isFinite(heading)&&heading>=0;
+  if(haveSpeed&&(haveCourse||speed<0.5))return{speed,heading:haveCourse?heading:null};
+  const need=Math.max(15,1.5*(accuracy||0));
+  for(let i=recentFixes.length-1;i>=0;i--){
+    const f=recentFixes[i],dt=(now-f.t)/1000;if(dt<5)continue;
+    const d=distance(f.lat,f.lng,lat,lng);
+    if(d>=need)return{speed:haveSpeed?speed:d/dt,heading:haveCourse?heading:bearingTo(f.lat,f.lng,lat,lng)};
+  }
+  const oldest=recentFixes[0],dt=(now-oldest.t)/1000;
+  return{speed:haveSpeed?speed:(dt>=8?distance(oldest.lat,oldest.lng,lat,lng)/dt:null),heading:haveCourse?heading:null};
+}
 
 // --- Start: one tap unlocks GPS, voice and keep-awake (iPad needs a user tap for all three) ---
 const startBtn=document.getElementById('start');
 let mode='off', session=0, lastFixTime=0, gpsStarted=0, staleWarned=false, wakeLock=null;
-function resetAlerts(){waypoints.forEach(w=>w.inside=false);}
+function resetAlerts(){waypoints.forEach(w=>w.inside=false);aheadState=new WeakMap();}
 function clearReadouts(){
   document.getElementById('proximityAlert').hidden=true;
   lastFix=null;
@@ -1331,6 +1398,8 @@ function clearReadouts(){
   ['cog','pos','acc','nearest'].forEach(id=>document.getElementById(id).textContent='—');
   document.querySelectorAll('.dist').forEach(el=>el.textContent='—');
   if(boat){map.removeLayer(boat);boat=null;}
+  if(courseLine){map.removeLayer(courseLine);courseLine=null;}
+  recentFixes=[];
   if(accCircle){map.removeLayer(accCircle);accCircle=null;}
 }
 async function keepAwake(){
@@ -1971,7 +2040,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.15.0'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.16.0'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
