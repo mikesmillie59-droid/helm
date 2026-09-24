@@ -1,7 +1,7 @@
 'use strict';
 // Offline fix 1.2.1: bypass HTTP cache and reject outdated app HTML.
-// Cache only the self-contained app, never third-party map/chart tiles.
-const VERSION='1.16.0';
+// Caches the self-contained app. LINZ chart tiles saved by the user (Offline charts) are served from helm-charts-v1.
+const VERSION='1.17.0';
 const SCOPE=new URL(self.registration.scope);
 const PREFIX='helm-shell-'+SCOPE.pathname+'-';
 const CACHE=PREFIX+VERSION;
@@ -24,8 +24,22 @@ self.addEventListener('activate',event=>{
     await self.clients.claim();
   })());
 });
+const TILE_CACHE='helm-charts-v1'; // separate name, so app updates never delete saved charts
+function offlineTileKey(url){ // same key the page uses: no LINZ key, no server letter
+  if(!/^tiles-[a-d]\.data-cdn\.linz\.govt\.nz$/.test(url.hostname))return null;
+  const m=url.pathname.match(/\/tiles\/v4\/layer=(\d+)\/EPSG:3857\/(\d+)\/(\d+)\/(\d+)\.png$/);
+  return m?'https://helm-offline.invalid/linz/'+m[1]+'/'+m[2]+'/'+m[3]+'/'+m[4]+'.png':null;
+}
 self.addEventListener('fetch',event=>{
   const url=new URL(event.request.url);
+  const tileKey=event.request.method==='GET'?offlineTileKey(url):null;
+  if(tileKey){
+    event.respondWith((async()=>{
+      try{const saved=await (await caches.open(TILE_CACHE)).match(tileKey);if(saved)return saved;}catch(e){}
+      return fetch(event.request);
+    })());
+    return;
+  }
   if(event.request.method!=='GET'||event.request.mode!=='navigate'||
      url.origin!==SCOPE.origin||![SCOPE.pathname,new URL(APP).pathname].includes(url.pathname))return;
   event.respondWith((async()=>{

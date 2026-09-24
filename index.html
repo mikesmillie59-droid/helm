@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.16.0">
+<html lang="en" data-helm-version="1.17.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<title>Helm — 1.16.0</title>
+<title>Helm — 1.17.0</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -876,6 +876,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   #safetyNotice .safety-actions{display:grid;grid-template-columns:1.4fr 1fr;gap:8px}
   #safetyNotice button{min-height:48px;font-size:16px;padding:0 10px}
   #backupStatus{margin:12px 0 0}
+  /* ---------- Offline charts ---------- */
+  #offlineProgress{width:100%;height:14px;margin-top:10px;accent-color:var(--green)}
+  #offlinePanelStatus{margin:0;padding:10px 16px;background:#253d32;border-bottom:1px solid var(--line)}
+  #offlineSummary{margin-top:14px}
   /* ---------- Narrow screens (phone / portrait) ---------- */
   @media (max-width:820px){
     #app{grid-template-columns:1fr;grid-template-rows:1fr auto}
@@ -908,7 +912,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.16.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <header class="helm-header"><strong>Helm <small>1.17.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
     <nav class="main-tabs" aria-label="Main views"><button id="navTab" class="on" aria-pressed="true">Navigation</button><button id="anchorTab" aria-pressed="false">Anchor watch</button></nav>
     <section id="anchorBanner" hidden aria-label="Anchor watch status"><strong id="anchorState" role="status"></strong><span id="anchorDistance"></span><button id="anchorMute" hidden>Silence for 1 minute</button></section>
     <section id="mobBanner" hidden aria-label="Man overboard">
@@ -920,6 +924,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <div class="mob-actions"><button id="mobShow" type="button">Show MOB</button><button id="mobClear" type="button">Clear MOB</button></div>
     </section>
     <p id="setupNotice" class="status" hidden></p>
+    <p id="offlinePanelStatus" class="status" role="status" hidden></p>
     <section id="safetyNotice" hidden aria-label="Protect saved places">
       <p id="installAdvice" hidden><strong>Add Helm to your Home Screen.</strong> Opened in Safari, your saved places can be deleted if Helm isn’t used for 7 days. Tap Safari’s Share button, then <strong>Add to Home Screen</strong>, and open Helm from that icon.</p>
       <p id="backupAdvice" hidden></p>
@@ -961,7 +966,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <button id="anchorShow">Show anchor</button>
       <button id="anchorClear">Clear saved anchor</button>
     </section>
-    <p class="reference-note">Reference only · Charts need internet</p>
+    <p class="reference-note">Reference only · Offline charts only where saved</p>
   </aside>
 </div>
 <dialog id="firstRunDialog" aria-labelledby="firstRunTitle">
@@ -972,7 +977,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <ol class="setup-steps">
       <li><a href="https://data.linz.govt.nz/my/api/" target="_blank" rel="noopener noreferrer"><strong>Get or view your LINZ access key</strong></a>. Keep the key private.</li>
       <li>Copy the key from LINZ and paste it below.</li>
-      <li>Select <strong>Save key and use LINZ charts</strong>. Chart images require an internet connection and are not downloaded with the app.</li>
+      <li>Select <strong>Save key and use LINZ charts</strong>. Charts need internet unless you save an area under <strong>Settings → Offline charts</strong>.</li>
     </ol>
     <label for="setupLinzKey">Your LINZ Data Service access key</label>
     <input id="setupLinzKey" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" placeholder="Paste your LINZ key here">
@@ -1015,6 +1020,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <select id="lookahead"><option value="0">Off</option><option value="60">1 minute ahead</option><option value="120">2 minutes ahead</option><option value="180" selected>3 minutes ahead</option><option value="300">5 minutes ahead</option></select>
       <p>Speaks a warning when your current course will take you into a saved hazard’s circle within this time. Works once the boat is moving at about 1.5 knots or more. The dashed line on the map shows where you’ll be.</p>
     </details>
+    <details class="chart-settings" id="offlineSettings">
+      <summary>Offline charts</summary>
+      <p>Save LINZ charts on this device so they still show with no mobile signal. First close Settings and move the map so the screen shows the area you want. Everything on screen is saved, down to each chart’s full detail.</p>
+      <button id="offlineDownload" class="primary">Download charts for area on screen</button>
+      <progress id="offlineProgress" max="1" value="0" hidden></progress>
+      <p id="offlineChartStatus" class="status" role="status"></p>
+      <button id="offlineCancel" hidden>Stop download</button>
+      <label><input id="offlineShowAreas" type="checkbox" checked> Outline saved areas on the map</label>
+      <p id="offlineSummary" class="status">Checking saved charts…</p>
+      <button id="offlineDelete">Delete all offline charts</button>
+      <p>Offline copies don’t update themselves, and LINZ corrects charts over time. Delete and download again every few months. The street map and OpenSeaMap buoys are not saved offline.</p>
+    </details>
     <details class="chart-settings" id="advancedSettings">
       <summary>Advanced &amp; troubleshooting</summary>
       <div id="linzSettings" hidden>
@@ -1038,7 +1055,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <p id="seamarkStatus" role="status">Seamarks off.</p>
       <p id="offlineStatus" role="status">Checking offline app…</p>
     </details>
-    <p class="reference-note">Helm 1.16.0 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
+    <p class="reference-note">Helm 1.17.0 · Reference charts only; not a substitute for current official navigation charts. Charts need internet except in areas saved offline. Blank areas do not mean clear water.</p>
   </div>
 </dialog>
 
@@ -1826,7 +1843,7 @@ function refreshCharts(){
   const layer=L.tileLayer('https://tiles-{s}.data-cdn.linz.govt.nz/services;key='+encodeURIComponent(appliedKey)+
    '/tiles/v4/layer='+chart.id+'/EPSG:3857/{z}/{x}/{y}.png',{
     bounds:chart.bounds&&chart.bounds[0]<chart.bounds[2]?[[chart.bounds[1],chart.bounds[0]],[chart.bounds[3],chart.bounds[2]]]:undefined,
-    maxZoom:18,subdomains:'abcd',zIndex:10+CHARTS.indexOf(chart),keepBuffer:1,
+    maxZoom:18,maxNativeZoom:nativeZoom(chart),subdomains:'abcd',zIndex:10+CHARTS.indexOf(chart),keepBuffer:1,
     attribution:'Crown copyright &copy; <a href="https://www.linz.govt.nz/">LINZ</a> · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> · Reference only'});
   const entry={chart,layer,failed:false,loading:true};chartLayers.set(chart.id,entry);
   const current=()=>chartLayers.get(chart.id)===entry;
@@ -2023,13 +2040,135 @@ for(const id of ['showArea','showChart']){
  document.getElementById(id).onclick=()=>{action();settingsDialog.close();};
 }
 
+// ===================== 6b. Offline charts =====================
+// Tiles are stored without the LINZ key; sw.js serves them to the map when saved.
+const TILE_CACHE='helm-charts-v1',MAX_OFFLINE_TILES=20000;
+function nativeZoom(c){ // the zoom where a chart shows its full printed detail
+ const scale=c.scale||CORE_CHARTS.find(x=>x.id===c.id)?.scale;
+ const z=scale?Math.round(Math.log2(559082264/scale))+1:(c.view||10)+5;
+ return Math.max(8,Math.min(17,z));
+}
+const offlineTileKey=(id,z,x,y)=>'https://helm-offline.invalid/linz/'+id+'/'+z+'/'+x+'/'+y+'.png';
+const linzTileURL=(key,id,z,x,y)=>'https://tiles-'+'abcd'[(x+y)%4]+'.data-cdn.linz.govt.nz/services;key='+encodeURIComponent(key)+'/tiles/v4/layer='+id+'/EPSG:3857/'+z+'/'+x+'/'+y+'.png';
+function tileRange(b,z){ // b=[west,south,east,north]
+ const n=2**z,clamp=v=>Math.max(0,Math.min(n-1,v));
+ const tx=l=>clamp(Math.floor((l+180)/360*n));
+ const ty=lat=>{const r=Math.max(-85,Math.min(85,lat))*Math.PI/180;return clamp(Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n));};
+ return {x0:tx(b[0]),x1:tx(b[2]),y0:ty(b[3]),y1:ty(b[1])};
+}
+function planOfflineTiles(area){
+ const charts=chartId.value==='auto'?CHARTS.filter(c=>c.bounds&&c.bounds[0]<c.bounds[2]&&boundsOverlap(c.bounds,area)):CHARTS.filter(c=>c.id===chartId.value&&c.bounds&&c.bounds[0]<c.bounds[2]);
+ const zMin=Math.max(6,Math.min(map.getZoom()-2,10)),jobs=[];
+ for(const c of charts){
+  const box=[Math.max(area[0],c.bounds[0]),Math.max(area[1],c.bounds[1]),Math.min(area[2],c.bounds[2]),Math.min(area[3],c.bounds[3])];
+  if(box[0]>=box[2]||box[1]>=box[3])continue;
+  for(let z=Math.max(zMin,chartId.value==='auto'?c.zoom:0);z<=nativeZoom(c);z++){
+   const r=tileRange(box,z);
+   for(let x=r.x0;x<=r.x1;x++)for(let y=r.y0;y<=r.y1;y++){jobs.push({id:c.id,z,x,y});if(jobs.length>MAX_OFFLINE_TILES)return jobs;}
+  }
+ }
+ return jobs;
+}
+const offlineStatusEl=document.getElementById('offlineChartStatus'),offlinePanel=document.getElementById('offlinePanelStatus');
+const offlineAreasLayer=L.layerGroup().addTo(map);
+let offlineJob=null;
+function offlineAreas(){try{const a=JSON.parse(savedSetting('helm.offlineAreas')||'[]');return Array.isArray(a)?a.filter(x=>Array.isArray(x.bounds)&&x.bounds.length===4&&x.bounds.every(Number.isFinite)&&Number.isFinite(x.date)):[];}catch(e){return [];}}
+function drawOfflineAreas(){
+ offlineAreasLayer.clearLayers();
+ if(!document.getElementById('offlineShowAreas').checked)return;
+ for(const a of offlineAreas())L.rectangle([[a.bounds[1],a.bounds[0]],[a.bounds[3],a.bounds[2]]],{color:'#3E9B45',weight:2,dashArray:'6 6',fill:false,interactive:false}).addTo(offlineAreasLayer);
+}
+document.getElementById('offlineShowAreas').checked=savedSetting('helm.offlineShowAreas')!=='false';
+document.getElementById('offlineShowAreas').onchange=e=>{storeSetting('helm.offlineShowAreas',String(e.target.checked));drawOfflineAreas();};
+async function updateOfflineSummary(){
+ const el=document.getElementById('offlineSummary');
+ if(!('caches' in window)){el.textContent='This browser cannot save charts offline.';return;}
+ try{
+  const count=(await (await caches.open(TILE_CACHE)).keys()).length,areas=offlineAreas();
+  let used='';try{const est=await navigator.storage?.estimate();if(est?.usage>=1048576)used=' Helm is using about '+Math.round(est.usage/1048576)+' MB on this device.';}catch(e){}
+  const oldest=areas.length?Math.min(...areas.map(a=>a.date)):0;
+  el.textContent=count?count.toLocaleString()+' chart tiles saved in '+areas.length+' area'+(areas.length===1?'':'s')+'. Oldest download: '+ageText(oldest)+'.'+used+
+   (navigator.serviceWorker?.controller?'':' Close and reopen Helm once so it can use them offline.'):'No charts saved offline yet.';
+ }catch(e){el.textContent='Could not read saved charts.';}
+}
+function setOfflineBusy(busy){
+ document.getElementById('offlineDownload').disabled=busy;document.getElementById('offlineDelete').disabled=busy;
+ document.getElementById('offlineCancel').hidden=!busy;document.getElementById('offlineProgress').hidden=!busy;offlinePanel.hidden=!busy;
+}
+document.getElementById('offlineDownload').onclick=async()=>{
+ if(offlineJob)return;
+ const key=(appliedKey||linzKey.value).trim();
+ if(chartSource.value!=='linz'||!appliedChart||!/^[A-Za-z0-9_-]{10,128}$/.test(key)){offlineStatusEl.textContent='Switch the background to LINZ charts (with your key) and apply it first.';return;}
+ if(!nationalCharts.length){offlineStatusEl.textContent='Load the NZ chart catalogue first (Advanced & troubleshooting → Load / refresh NZ chart catalogue). It tells Helm exactly where each chart has detail, so only useful tiles are saved.';return;}
+ if(!('caches' in window)){offlineStatusEl.textContent='This browser cannot save charts offline.';return;}
+ if(!navigator.onLine){offlineStatusEl.textContent='Connect to the internet (Wi-Fi is best) to download charts.';return;}
+ const b=map.getBounds(),area=[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()];
+ const jobs=planOfflineTiles(area);
+ if(!jobs.length){offlineStatusEl.textContent='No LINZ charts cover the area on screen. Move the map over New Zealand waters.';return;}
+ if(jobs.length>MAX_OFFLINE_TILES){offlineStatusEl.textContent='That area is too large to save in one go (over '+MAX_OFFLINE_TILES.toLocaleString()+' tiles). Zoom in a step or two and download it in smaller pieces.';return;}
+ const mb=Math.max(1,Math.round(jobs.length*20/1024));
+ if(!confirm('Save about '+jobs.length.toLocaleString()+' chart tiles (roughly '+mb+' MB) for the area on screen?\n\nUse Wi-Fi if you can. Keep Helm open on screen until it finishes. If it stops, just press Download again and it carries on where it left off.'))return;
+ offlineJob={cancelled:false};const job=offlineJob;setOfflineBusy(true);
+ let lock=null;try{lock=await navigator.wakeLock?.request('screen');}catch(e){}
+ const progress=document.getElementById('offlineProgress');
+ let next=0,done=0,saved=0,already=0,empty=0,failed=0,corsFails=0,stopReason='';
+ const show=()=>{progress.value=done/jobs.length;const pct=Math.floor(done/jobs.length*100);
+  offlineStatusEl.textContent='Saving charts: '+done.toLocaleString()+' of '+jobs.length.toLocaleString()+' ('+pct+'%). Keep Helm open.';
+  offlinePanel.textContent='Saving offline charts: '+pct+'% — keep Helm open.';};
+ show();
+ try{
+  const cache=await caches.open(TILE_CACHE);
+  const fetchTile=async t=>{
+   const k=offlineTileKey(t.id,t.z,t.x,t.y);
+   if(await cache.match(k)){already++;return;}
+   const url=linzTileURL(key,t.id,t.z,t.x,t.y);
+   for(let attempt=0;attempt<2&&!job.cancelled;attempt++){
+    try{
+     {
+      const r=await fetch(url,{credentials:'omit'});
+      if(r.status===401||r.status===403){stopReason='LINZ refused the access key. Check your key in Advanced settings.';job.cancelled=true;return;}
+      if(r.status===404||r.status===204){empty++;return;} // no chart detail in this square
+      if(!r.ok)throw Error('HTTP '+r.status);
+      const blob=await r.blob();
+      await cache.put(k,new Response(blob,{headers:{'Content-Type':blob.type||'image/png'}}));saved++;return;
+     }
+    }catch(e){
+     if(e.name==='QuotaExceededError'){stopReason='This device has no more room for Helm’s charts. Delete some offline charts or free up storage.';job.cancelled=true;return;}
+     // Repeated connection-level failures before anything saves: LINZ is blocking direct downloads (or the network is down).
+     if(e instanceof TypeError&&saved===0&&already===0&&++corsFails>=6){stopReason=navigator.onLine?'LINZ did not allow Helm to download its chart images directly, so nothing was saved. Charts still work online.':'The internet connection dropped. Reconnect and press Download again.';job.cancelled=true;return;}
+     await new Promise(r=>setTimeout(r,800));
+    }
+   }
+   if(!job.cancelled)failed++;
+  };
+  const worker=async()=>{while(!job.cancelled&&next<jobs.length){await fetchTile(jobs[next++]);done++;if(done%10===0||done===jobs.length)show();}};
+  await Promise.all([worker(),worker(),worker(),worker()]);
+ }catch(e){stopReason=stopReason||'Download stopped: '+e.message;}
+ if(saved+already>0){
+  const areas=offlineAreas();areas.push({bounds:area.map(v=>Math.round(v*1e5)/1e5),date:Date.now(),tiles:saved+already});
+  storeSetting('helm.offlineAreas',JSON.stringify(areas.slice(-50)));drawOfflineAreas();
+ }
+ lock?.release?.().catch?.(()=>{});
+ offlineStatusEl.textContent=stopReason||(job.cancelled?'Download stopped. '+(saved+already).toLocaleString()+' tiles are saved; press Download again to finish.':
+  'Done. '+(saved+already).toLocaleString()+' tiles saved'+(failed?', '+failed.toLocaleString()+' could not be downloaded — press Download again to retry them':'')+
+  '. Test it: turn on Airplane Mode and look at this area.');
+ offlineJob=null;setOfflineBusy(false);updateOfflineSummary();
+};
+document.getElementById('offlineCancel').onclick=()=>{if(offlineJob)offlineJob.cancelled=true;};
+document.getElementById('offlineDelete').onclick=async()=>{
+ if(!confirm('Delete all charts saved for offline use? You will need internet to see charts until you download them again.'))return;
+ try{await caches.delete(TILE_CACHE);}catch(e){}
+ removeSetting('helm.offlineAreas');drawOfflineAreas();offlineStatusEl.textContent='Offline charts deleted.';updateOfflineSummary();
+};
+drawOfflineAreas();updateOfflineSummary();
+
 // ===================== 7. Offline app (not offline charts) =====================
 const offlineStatus=document.getElementById('offlineStatus');
 let offlineReady=false;
 function showOfflineStatus(){
   offlineStatus.textContent=(navigator.onLine?'Network connected. ':'Offline. ')+
     (offlineReady?'App saved for offline opening. ':'App not yet confirmed saved. ')+
-    'Map/chart backgrounds need internet. Test offline reopening before leaving.';
+    'Charts need internet except in areas saved under Offline charts. Test with Airplane Mode before leaving.';
 }
 async function checkOfflineApp(worker){
   if(!worker){offlineReady=false;showOfflineStatus();return;}
@@ -2040,7 +2179,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.16.0'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.17.0'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
