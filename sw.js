@@ -1,7 +1,7 @@
 'use strict';
 // Offline fix 1.2.1: bypass HTTP cache and reject outdated app HTML.
 // Caches the self-contained app. LINZ chart tiles saved by the user (Offline charts) are served from helm-charts-v1.
-const VERSION='1.22.0';
+const VERSION='1.22.1';
 const SCOPE=new URL(self.registration.scope);
 const PREFIX='helm-shell-'+SCOPE.pathname+'-';
 const CACHE=PREFIX+VERSION;
@@ -28,7 +28,7 @@ const TILE_CACHE='helm-charts-v1'; // separate name, so app updates never delete
 function offlineTileKey(url){ // same key the page uses: no LINZ key, no server letter
   if(url.hostname==='gis.charttools.noaa.gov'){ // US charts (NOAA): .../MapServer/tile/z/y/x
     const n=url.pathname.match(/\/MarineChart_Services\/NOAACharts\/MapServer\/tile\/(\d+)\/(\d+)\/(\d+)$/);
-    return n?'https://helm-offline.invalid/noaa/'+n[1]+'/'+n[3]+'/'+n[2]+'.png':null;
+    return n?'https://helm-offline.invalid/noaa/'+(Number(n[1])+2)+'/'+n[3]+'/'+n[2]+'.png':null; // NOAA level + 2 = map zoom
   }
   if(!/^tiles-[a-d]\.data-cdn\.linz\.govt\.nz$/.test(url.hostname))return null;
   const m=url.pathname.match(/\/tiles\/v4\/layer=(\d+)\/EPSG:3857\/(\d+)\/(\d+)\/(\d+)\.png$/);
