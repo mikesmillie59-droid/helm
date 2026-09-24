@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.20.0">
+<html lang="en" data-helm-version="1.21.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<title>Helm — 1.20.0</title>
+<title>Helm — 1.21.0</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -944,7 +944,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.20.0</small></strong><div class="header-buttons"><button id="nightToggle" aria-pressed="false" title="Night mode">Night</button><button id="openSettings" aria-haspopup="dialog">Settings</button></div></header>
+    <header class="helm-header"><strong>Helm <small>1.21.0</small></strong><div class="header-buttons"><button id="nightToggle" aria-pressed="false" title="Night mode">Night</button><button id="openSettings" aria-haspopup="dialog">Settings</button></div></header>
     <nav class="main-tabs" aria-label="Main views"><button id="navTab" class="on" aria-pressed="true">Navigation</button><button id="anchorTab" aria-pressed="false">Anchor watch</button></nav>
     <section id="anchorBanner" hidden aria-label="Anchor watch status"><strong id="anchorState" role="status"></strong><span id="anchorDistance"></span><button id="anchorMute" hidden>Silence for 1 minute</button></section>
     <section id="mobBanner" hidden aria-label="Man overboard">
@@ -1039,27 +1039,36 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <label class="setup-check"><input id="setupRememberKey" type="checkbox" checked> Remember this key in this browser on this device</label>
     <p id="setupKeyStatus" role="status"></p>
     <div class="setup-actions"><button id="setupStreet" type="button">Use street map for now</button><button id="setupUseLinz" class="primary" type="button">Save key and use LINZ charts</button></div>
-    <p class="setup-note">You can reopen this guide or change the key later in <strong>Settings → Advanced &amp; troubleshooting</strong>. LINZ keys are never included in Saved Places backups.</p>
+    <p class="setup-note">You can reopen this guide or change the key later in <strong>Settings → LINZ account</strong>. LINZ keys are never included in Saved Places backups.</p>
   </div>
 </dialog>
 <dialog id="settingsDialog" aria-labelledby="settingsTitle">
   <header class="settings-header"><h2 id="settingsTitle">Settings</h2><button id="closeSettings" autofocus>Done</button></header>
   <div class="settings-body">
     <details class="chart-settings" id="mapSettings" open>
-      <summary>Map &amp; charts</summary>
+      <summary>Charts</summary>
       <label for="chartSource">Background</label>
       <select id="chartSource"><option value="street">Street map</option><option value="linz">LINZ reference charts</option></select>
       <div id="mapLinzControls" hidden>
-        <label for="chartMode">Chart mode</label>
-        <select id="chartMode"><option value="auto">Automatic NZ charts</option><option value="manual">Choose a specific chart</option></select>
-        <p>Automatic mode selects detail as you move and zoom.</p>
+        <label for="chartMode">Which chart</label>
+        <select id="chartMode"><option value="auto">Automatic (recommended)</option><option value="manual">A specific chart</option></select>
+        <p id="chartModeHelp">Automatic shows the most detailed chart as you move and zoom.</p>
+        <div id="specificChart" hidden>
+          <label for="chartSearch">Find a chart</label><input id="chartSearch" type="search" placeholder="Place name or chart number">
+          <label for="chartId">Chart</label><select id="chartId"><option value="auto">Automatic — available NZ charts</option></select>
+          <button id="showChart">Show this chart on the map</button>
+        </div>
       </div>
-      <button id="applyChart">Apply map settings</button>
-      <label for="chartArea">Explore an area</label>
-      <select id="chartArea"><option value="nz">All New Zealand</option><option value="northland">Northland / Bay of Islands</option><option value="gulf" selected>Hauraki Gulf</option><option value="tauranga">Tauranga</option><option value="gisborne">Gisborne</option><option value="napier">Napier</option><option value="taranaki">New Plymouth</option><option value="wellington">Wellington / Cook Strait</option><option value="sounds">Marlborough Sounds</option><option value="nelson">Nelson / Tasman Bay</option><option value="westport">Westport</option><option value="lyttelton">Lyttelton / Banks Peninsula</option><option value="otago">Otago Harbour</option><option value="fiordland">Fiordland</option><option value="stewart">Stewart Island / Rakiura</option><option value="chatham">Chatham Islands</option><option value="auckland">Auckland Harbour</option><option value="kawau">Kawau Island</option><option value="waiheke">Waiheke Island</option><option value="barrier">Great Barrier Island</option><option value="mercury">Mercury Islands</option></select>
-      <button id="showArea">Show area</button>
       <label><input id="seamarks" type="checkbox"> Show OpenSeaMap buoys and beacons</label>
       <p>Optional community overlay. Symbols do not trigger hazard alerts.</p>
+      <p id="chartStatus" class="status" role="status">Street map selected.</p>
+      <p id="seamarkStatus" class="status" role="status">Seamarks off.</p>
+    </details>
+    <details class="chart-settings" id="areaSettings">
+      <summary>Jump to an area</summary>
+      <label for="chartArea">Move the map to</label>
+      <select id="chartArea"><option value="" selected>Choose an area…</option><option value="nz">All New Zealand</option><option value="northland">Northland / Bay of Islands</option><option value="gulf">Hauraki Gulf</option><option value="tauranga">Tauranga</option><option value="gisborne">Gisborne</option><option value="napier">Napier</option><option value="taranaki">New Plymouth</option><option value="wellington">Wellington / Cook Strait</option><option value="sounds">Marlborough Sounds</option><option value="nelson">Nelson / Tasman Bay</option><option value="westport">Westport</option><option value="lyttelton">Lyttelton / Banks Peninsula</option><option value="otago">Otago Harbour</option><option value="fiordland">Fiordland</option><option value="stewart">Stewart Island / Rakiura</option><option value="chatham">Chatham Islands</option><option value="auckland">Auckland Harbour</option><option value="kawau">Kawau Island</option><option value="waiheke">Waiheke Island</option><option value="barrier">Great Barrier Island</option><option value="mercury">Mercury Islands</option></select>
+      <p>The map moves as soon as you pick an area.</p>
     </details>
     <details class="chart-settings" id="pointsSettings">
       <summary>Saved points</summary>
@@ -1088,29 +1097,22 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <p>Offline copies don’t update themselves, and LINZ corrects charts over time. Delete and download again every few months. The street map and OpenSeaMap buoys are not saved offline.</p>
     </details>
     <details class="chart-settings" id="advancedSettings">
-      <summary>Advanced &amp; troubleshooting</summary>
-      <div id="linzSettings" hidden>
-        <h3>Specific chart</h3>
-        <label for="chartSearch">Find a chart</label><input id="chartSearch" type="search" placeholder="Place name or chart number">
-        <label for="chartId">Chart</label><select id="chartId"><option value="auto">Automatic — available NZ charts</option></select>
-        <div class="settings-actions"><button id="applyManual">Apply selected chart</button><button id="showChart">Show chart area</button></div>
-        <h3>LINZ connection &amp; catalogue</h3>
-        <label for="linzKey">Your LINZ Data Service access key</label>
-        <input id="linzKey" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" placeholder="Paste key here on this device">
-        <button id="loadCatalogue">Load / refresh NZ chart catalogue</button>
-        <p id="catalogueStatus" role="status">Nine Gulf charts included. Load the catalogue for nationwide chart selection.</p>
-        <details><summary>Import catalogue file instead</summary><p>If the online catalogue request fails, open the LINZ catalogue with the button below, save the XML file, then import it here. The XML may contain your key; keep it private. Helm saves only chart names, IDs and bounds.</p><button id="openCatalogue">Open LINZ catalogue</button><label for="catalogueFile">Import LINZ WMTS XML</label><input id="catalogueFile" type="file" accept=".xml,text/xml,application/xml"></details>
-        <label><input id="rememberKey" type="checkbox"> Remember key on this device</label>
-        <button id="forgetKey">Forget saved LINZ key</button>
-        <p>Get a key from <a href="https://data.linz.govt.nz/my/api/" target="_blank" rel="noopener noreferrer">LINZ Data Service</a>. Keys are excluded from point backups.</p>
-      </div>
+      <summary>LINZ account (set up once)</summary>
+      <label for="linzKey">Your LINZ Data Service access key</label>
+      <input id="linzKey" type="password" autocomplete="off" spellcheck="false" autocapitalize="none" placeholder="Paste key here on this device">
+      <label><input id="rememberKey" type="checkbox"> Remember key on this device</label>
+      <button id="forgetKey">Forget saved LINZ key</button>
+      <p>Get a key from <a href="https://data.linz.govt.nz/my/api/" target="_blank" rel="noopener noreferrer">LINZ Data Service</a>. Keys are excluded from point backups.</p>
       <button id="setupHelp" type="button">Show first-time LINZ setup guide</button>
-      <h3>Loading &amp; offline status</h3>
-      <p id="chartStatus" role="status">Street map selected.</p>
-      <p id="seamarkStatus" role="status">Seamarks off.</p>
-      <p id="offlineStatus" role="status">Checking offline app…</p>
+      <h3>Chart catalogue</h3>
+      <p>The catalogue tells Helm which charts exist across New Zealand and exactly where each one has detail. Refresh it now and then.</p>
+      <button id="loadCatalogue">Load / refresh NZ chart catalogue</button>
+      <p id="catalogueStatus" role="status">Nine Gulf charts included. Load the catalogue for nationwide chart selection.</p>
+      <details><summary>Import catalogue file instead</summary><p>If the online catalogue request fails, open the LINZ catalogue with the button below, save the XML file, then import it here. The XML may contain your key; keep it private. Helm saves only chart names, IDs and bounds.</p><button id="openCatalogue">Open LINZ catalogue</button><label for="catalogueFile">Import LINZ WMTS XML</label><input id="catalogueFile" type="file" accept=".xml,text/xml,application/xml"></details>
+      <h3>Troubleshooting</h3>
+      <p id="offlineStatus" class="status" role="status">Checking offline app…</p>
     </details>
-    <p class="reference-note">Helm 1.20.0 · Reference charts only; not a substitute for current official navigation charts. Charts need internet except in areas saved offline. Blank areas do not mean clear water.</p>
+    <p class="reference-note">Helm 1.21.0 · Reference charts only; not a substitute for current official navigation charts. Charts need internet except in areas saved offline. Blank areas do not mean clear water.</p>
   </div>
 </dialog>
 
@@ -2010,12 +2012,13 @@ function savedSetting(key){try{return localStorage.getItem(key);}catch(e){return
 function storeSetting(key,value){try{localStorage.setItem(key,value);return true;}catch(e){return false;}}
 function removeSetting(key){try{localStorage.removeItem(key);return true;}catch(e){return false;}}
 function updateChartForm(){
- const hidden=chartSource.value!=='linz';
- document.getElementById('linzSettings').hidden=hidden;
- document.getElementById('mapLinzControls').hidden=hidden;
- document.getElementById('chartMode').value=chartId.value==='auto'?'auto':'manual';
+ const manual=chartId.value!=='auto';
+ document.getElementById('mapLinzControls').hidden=chartSource.value!=='linz';
+ document.getElementById('chartMode').value=manual?'manual':'auto';
+ document.getElementById('specificChart').hidden=!manual;
+ document.getElementById('chartModeHelp').textContent=manual?'Only the chart you pick is shown, at every zoom.':'Automatic shows the most detailed chart as you move and zoom.';
 }
-chartSource.onchange=updateChartForm;
+chartSource.onchange=()=>{updateChartForm();applyChart({recenter:false});};
 function monitorTiles(layer,label,target){
   let failed=false;
   const current=()=>target===chartStatus?backgroundLayer===layer:seamarkLayer===layer;
@@ -2156,7 +2159,7 @@ function installCatalogue(records){
  for(const entry of chartLayers.values())map.removeLayer(entry.layer);chartLayers.clear();refreshCharts();
  const saved=storeSetting('helm.nzCatalogue',JSON.stringify({version:1,charts:nationalCharts}));
  document.getElementById('catalogueStatus').textContent=nationalCharts.length+' NZ-area chart records loaded. '+(saved?'Catalogue saved on this device. ':'Catalogue is available this session, but could not be saved. ')+
- 'Choose Automatic, then Apply background. Chart images still need internet; catalogue bounds do not guarantee complete coverage.';
+ 'Automatic charts now cover the whole country. Catalogue bounds do not guarantee complete coverage.';
 }
 document.getElementById('loadCatalogue').onclick=async()=>{
  const status=document.getElementById('catalogueStatus'),button=document.getElementById('loadCatalogue');
@@ -2192,8 +2195,8 @@ document.getElementById('catalogueFile').onchange=async e=>{
 function applyChart(options={}){
  const isLinz=chartSource.value==='linz',key=linzKey.value.trim();
  if(isLinz&&!/^[A-Za-z0-9_-]{10,128}$/.test(key)){
-  document.getElementById('advancedSettings').open=true;
-  linzKey.focus();chartStatus.textContent='Enter your LINZ Data Service access key before applying the chart.';return;
+  const account=document.getElementById('advancedSettings');account.open=true;account.scrollIntoView({behavior:'smooth',block:'start'});
+  chartStatus.textContent='Enter your LINZ access key under LINZ account (below) and the charts will appear.';return;
  }
  if(isLinz&&chartId.value!=='auto'&&!CHARTS.some(c=>c.id===chartId.value)){
   chartStatus.textContent='Select a supported chart.';return;
@@ -2216,16 +2219,21 @@ function applyChart(options={}){
  if(options.persist!==false)storeSetting('helm.chartSource',chartSource.value);
  document.getElementById('setupNotice').hidden=true;
 }
-document.getElementById('applyChart').onclick=()=>{applyChart();updateChartForm();};
-document.getElementById('applyManual').onclick=()=>{applyChart();updateChartForm();};
-chartId.onchange=()=>{document.getElementById('chartMode').value=chartId.value==='auto'?'auto':'manual';};
+chartId.onchange=()=>{updateChartForm();applyChart({recenter:chartId.value!=='auto'});};
 document.getElementById('chartMode').onchange=e=>{
- if(e.target.value==='auto'){chartId.value='auto';}
- else{
-  if(chartId.value==='auto')chartId.value=CORE_CHARTS[0].id;
-  document.getElementById('advancedSettings').open=true;
-  document.getElementById('chartSearch').focus();
+ if(e.target.value==='auto')chartId.value='auto';
+ else if(chartId.value==='auto'){ // start with the most detailed chart under the middle of the map
+  const c=map.getCenter(),here=[c.lng,c.lat,c.lng,c.lat];
+  const best=CHARTS.filter(x=>x.bounds&&boundsOverlap(x.bounds,here)).sort((a,b)=>a.area-b.area)[0];
+  chartId.value=(best||CORE_CHARTS[0]).id;populateCharts();
  }
+ updateChartForm();applyChart({recenter:false});
+};
+linzKey.addEventListener('change',()=>setTimeout(()=>{ // short delay so the tap that left the box lands before the page reflows
+ if(chartSource.value==='linz'&&/^[A-Za-z0-9_-]{10,128}$/.test(linzKey.value.trim()))applyChart({recenter:false});},300));
+document.getElementById('rememberKey').onchange=e=>{
+ const key=linzKey.value.trim();
+ if(e.target.checked&&/^[A-Za-z0-9_-]{10,128}$/.test(key))storeSetting('helm.linzKey',key);else if(!e.target.checked)removeSetting('helm.linzKey');
 };
 document.getElementById('forgetKey').onclick=()=>{
   if(!removeSetting('helm.linzKey')){alert('Could not remove the stored key. Clear this site’s data in Safari settings to remove it.');return;}
@@ -2240,9 +2248,9 @@ function showSelectedChart(){
 }
 document.getElementById('showChart').onclick=showSelectedChart;
 const AREAS={nz:[-41,173,5],northland:[-35.2,174.15,11],tauranga:[-37.65,176.17,12],gisborne:[-38.7,178.05,12],napier:[-39.48,176.92,12],taranaki:[-39.05,174.02,12],wellington:[-41.3,174.8,11],sounds:[-41.15,174.1,11],nelson:[-41.2,173.2,11],westport:[-41.75,171.6,12],lyttelton:[-43.65,172.75,11],otago:[-45.82,170.62,12],fiordland:[-45.3,166.9,9],stewart:[-46.95,168,10],chatham:[-43.9,-176.5,10],gulf:[-36.45,175.2,9],auckland:[-36.805,174.845,14],kawau:[-36.43,174.84,12],waiheke:[-36.8,175.1,12],barrier:[-36.2,175.42,12],mercury:[-36.64,175.82,12]};
-document.getElementById('showArea').onclick=()=>{
- const area=AREAS[document.getElementById('chartArea').value];if(!area)return;
- following=false;setFollow();map.setView([area[0],area[1]],area[2]);
+document.getElementById('chartArea').onchange=e=>{
+ const area=AREAS[e.target.value];e.target.value='';if(!area)return;
+ following=false;setFollow();map.setView([area[0],area[1]],area[2]);settingsDialog.close();
 };
 document.getElementById('seamarks').onchange=e=>{
   storeSetting('helm.seamarks',e.target.checked?'true':'false');
@@ -2268,7 +2276,7 @@ function restorePreferences(){
   else{
    const notice=document.getElementById('setupNotice');notice.hidden=false;
    notice.textContent='Street map shown. Open Settings and enter your LINZ key to restore your chart.';
-   chartStatus.textContent='Your LINZ chart choice is remembered. Enter your key, then Apply background.';
+   chartStatus.textContent='Your LINZ chart choice is remembered. Enter your key under LINZ account to show it.';
   }
  }
  try{
@@ -2322,7 +2330,7 @@ document.getElementById('openSettings').onclick=()=>settingsDialog.showModal();
 document.getElementById('closeSettings').onclick=()=>settingsDialog.close();
 settingsDialog.addEventListener('close',()=>document.getElementById('openSettings').focus());
 // Area shortcuts also return to the map so the new view is immediately visible.
-for(const id of ['showArea','showChart']){
+for(const id of ['showChart']){
  const action=document.getElementById(id).onclick;
  document.getElementById(id).onclick=()=>{action();settingsDialog.close();};
 }
@@ -2385,8 +2393,8 @@ function setOfflineBusy(busy){
 document.getElementById('offlineDownload').onclick=async()=>{
  if(offlineJob)return;
  const key=(appliedKey||linzKey.value).trim();
- if(chartSource.value!=='linz'||!appliedChart||!/^[A-Za-z0-9_-]{10,128}$/.test(key)){offlineStatusEl.textContent='Switch the background to LINZ charts (with your key) and apply it first.';return;}
- if(!nationalCharts.length){offlineStatusEl.textContent='Load the NZ chart catalogue first (Advanced & troubleshooting → Load / refresh NZ chart catalogue). It tells Helm exactly where each chart has detail, so only useful tiles are saved.';return;}
+ if(chartSource.value!=='linz'||!appliedChart||!/^[A-Za-z0-9_-]{10,128}$/.test(key)){offlineStatusEl.textContent='Choose LINZ reference charts under Settings → Charts first (with your key entered).';return;}
+ if(!nationalCharts.length){offlineStatusEl.textContent='Load the NZ chart catalogue first (Settings → LINZ account → Load / refresh NZ chart catalogue). It tells Helm exactly where each chart has detail, so only useful tiles are saved.';return;}
  if(!('caches' in window)){offlineStatusEl.textContent='This browser cannot save charts offline.';return;}
  if(!navigator.onLine){offlineStatusEl.textContent='Connect to the internet (Wi-Fi is best) to download charts.';return;}
  const b=map.getBounds(),area=[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()];
@@ -2413,7 +2421,7 @@ document.getElementById('offlineDownload').onclick=async()=>{
     try{
      {
       const r=await fetch(url,{credentials:'omit'});
-      if(r.status===401||r.status===403){stopReason='LINZ refused the access key. Check your key in Advanced settings.';job.cancelled=true;return;}
+      if(r.status===401||r.status===403){stopReason='LINZ refused the access key. Check your key under Settings → LINZ account.';job.cancelled=true;return;}
       if(r.status===404||r.status===204){empty++;return;} // no chart detail in this square
       if(!r.ok)throw Error('HTTP '+r.status);
       const blob=await r.blob();
@@ -2466,7 +2474,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.20.0'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.21.0'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
