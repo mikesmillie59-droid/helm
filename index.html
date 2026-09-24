@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.13.0">
+<html lang="en" data-helm-version="1.14.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Helm — 1.13.0</title>
+<title>Helm — 1.14.0</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -850,6 +850,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   #advancedSettings #offlineStatus{padding:0}
   .chart-settings>summary{font-weight:600}
 
+  /* ---------- Man overboard ---------- */
+  .mob-button{width:72px;height:72px;min-height:72px;padding:0;border-radius:50%;background:#E53935;color:#fff;
+    font-size:20px;font-weight:800;letter-spacing:1px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.45)}
+  .mob-button.active{animation:mobPulse 1.2s infinite}
+  @keyframes mobPulse{50%{box-shadow:0 0 0 12px rgba(229,57,53,.35)}}
+  @media (prefers-reduced-motion:reduce){.mob-button.active{animation:none;outline:4px solid #fff}}
+  #mobBanner{padding:14px 20px;background:#7a1f1c;border-bottom:3px solid #E53935}
+  #mobBanner span{display:block;margin:3px 0;font-size:16px}
+  #mobBanner .mob-title{display:block;font-size:20px;letter-spacing:1px}
+  #mobBanner .mob-big{font-size:44px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+  #mobBanner #mobBearing{font-size:22px;font-weight:700}
+  .mob-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .mob-actions button{min-height:48px;font-size:16px;padding:0 8px}
+  .mob-icon{background:transparent;border:0}
+  .mob-label{font-weight:700;color:#B71C1C}
   /* ---------- Narrow screens (phone / portrait) ---------- */
   @media (max-width:820px){
     #app{grid-template-columns:1fr;grid-template-rows:1fr auto}
@@ -882,9 +897,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.13.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <header class="helm-header"><strong>Helm <small>1.14.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
     <nav class="main-tabs" aria-label="Main views"><button id="navTab" class="on" aria-pressed="true">Navigation</button><button id="anchorTab" aria-pressed="false">Anchor watch</button></nav>
     <section id="anchorBanner" hidden aria-label="Anchor watch status"><strong id="anchorState" role="status"></strong><span id="anchorDistance"></span><button id="anchorMute" hidden>Silence for 1 minute</button></section>
+    <section id="mobBanner" hidden aria-label="Man overboard">
+      <strong class="mob-title">MAN OVERBOARD</strong>
+      <span id="mobDistance" class="mob-big">—</span>
+      <span id="mobBearing"></span>
+      <span id="mobElapsed"></span>
+      <span id="mobPos"></span>
+      <div class="mob-actions"><button id="mobShow" type="button">Show MOB</button><button id="mobClear" type="button">Clear MOB</button></div>
+    </section>
     <p id="setupNotice" class="status" hidden></p>
     <section id="proximityAlert" hidden aria-label="Nearby saved point">
       <span id="alertKind"></span><strong id="alertName"></strong><span id="alertDistance"></span><span id="alertMore"></span>
@@ -995,7 +1018,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <p id="seamarkStatus" role="status">Seamarks off.</p>
       <p id="offlineStatus" role="status">Checking offline app…</p>
     </details>
-    <p class="reference-note">Helm 1.13.0 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
+    <p class="reference-note">Helm 1.14.0 · Reference charts only; not a substitute for current official navigation charts. Chart images need internet. Blank areas do not mean clear water.</p>
   </div>
 </dialog>
 
@@ -1176,13 +1199,17 @@ document.getElementById('testVoice').onclick=()=>speak('Voice check. Approaching
 const boatIcon=L.divIcon({className:'boat',html:
  `<svg viewBox="0 0 44 44"><path id="hull" d="M22 4 L34 36 L22 30 L10 36 Z" fill="#F26A21" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>`});
 let boat=null, accCircle=null, following=true, watchId=null, lastFix=null;
+let lastKnown=null; // last good position; survives a brief GPS dropout so MOB can still be marked
+let mob=null;       // active man-overboard mark {lat,lng,time,demo}
 
 function setFollow(){document.getElementById('follow').classList.toggle('on',following);}
 document.getElementById('follow').onclick=()=>{following=!following;setFollow();if(following&&lastFix)map.panTo([lastFix.lat,lastFix.lng]);};
 map.on('dragstart',()=>{following=false;setFollow();});
 
 function onFix(lat,lng,speedMs,heading,accuracy){
-  lastFix={lat,lng,accuracy};
+  const course=heading!=null&&!isNaN(heading)?heading:null;
+  lastFix={lat,lng,accuracy,course,speed:speedMs};
+  lastKnown={lat,lng,accuracy,time:Date.now(),demo:mode==='demo'};
   if(!boat){boat=L.marker([lat,lng],{icon:boatIcon,zIndexOffset:1000}).addTo(map);
             accCircle=L.circle([lat,lng],{radius:accuracy||0,color:'#2A3238',weight:1,fillOpacity:.05}).addTo(map);
             map.setView([lat,lng],15);}
@@ -1197,6 +1224,7 @@ function onFix(lat,lng,speedMs,heading,accuracy){
   document.getElementById('acc').textContent=accuracy?'± '+Math.round(accuracy)+' m':'—';
   checkAlerts(lat,lng);
   updateAnchor();
+  updateMob();
 }
 
 function fmtPos(lat,lng){
@@ -1225,7 +1253,7 @@ function checkAlerts(lat,lng,notify=true){
       alerts.push({hazard:w.type==='hazard',text:(w.type==='hazard'?'Caution. Hazard. ':'Approaching ')+w.name+', '+Math.round(d/10)*10+' metres.'});
     } else if(d>w.radius*1.3&&w.inside){ w.inside=false; }   // 30% buffer so it doesn't re-trigger on the edge
   });
-  if(notify&&!anchorActive)alerts.sort((a,b)=>Number(b.hazard)-Number(a.hazard)).forEach(a=>speak(a.text));
+  if(notify&&!anchorActive)alerts.filter(a=>!mob||a.hazard).sort((a,b)=>Number(b.hazard)-Number(a.hazard)).forEach(a=>speak(a.text));
   nearby.sort((a,b)=>Number(b.w.type==='hazard')-Number(a.w.type==='hazard')||a.d-b.d);
   const banner=document.getElementById('proximityAlert');banner.hidden=!nearby.length;
   if(nearby.length){
@@ -1263,7 +1291,7 @@ async function keepAwake(){
 }
 function stopTracking(){
   if(anchorActive)endAnchorWatch(true);
-  session++;mode='off';
+  session++;mode='off';lastKnown=null;
   if(watchId!=null){navigator.geolocation.clearWatch(watchId);watchId=null;}
   if(demoTimer!=null){clearInterval(demoTimer);demoTimer=null;}
   if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null;}
@@ -1279,7 +1307,11 @@ function gpsUnavailable(message){
   updateAnchor();
 }
 startBtn.onclick=()=>{
-  if(mode==='gps'){if(anchorActive&&!confirm('Stop GPS and end anchor watch?'))return;stopTracking();return;}
+  if(mode==='gps'){
+    if(mob&&!confirm('Man overboard is active. Without GPS, Helm cannot show the way back. Stop GPS anyway?'))return;
+    if(anchorActive&&!confirm('Stop GPS and end anchor watch?'))return;
+    stopTracking();return;
+  }
   stopTracking();
   if(!navigator.geolocation){alert('This browser has no location support.');return;}
   mode='gps';const token=session;lastFixTime=0;gpsStarted=Date.now();staleWarned=false;
@@ -1450,6 +1482,96 @@ try{
  }
 }catch(e){}
 updateAnchor();setInterval(updateAnchor,1000);
+
+// ===================== Man overboard (MOB) =====================
+// One tap marks the position. The mark survives reloads until cleared deliberately.
+let mobSpokenAt=0,mobMarker=null,mobLine=null;
+const mobLayer=L.layerGroup().addTo(map);
+function bearingTo(a,b,c,d){ // true bearing in degrees from point 1 to point 2
+ const toR=x=>x*Math.PI/180,dl=toR(d-b);
+ const y=Math.sin(dl)*Math.cos(toR(c)),x=Math.cos(toR(a))*Math.sin(toR(c))-Math.sin(toR(a))*Math.cos(toR(c))*Math.cos(dl);
+ return (Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+function validMob(m){return m&&Number.isFinite(m.lat)&&Math.abs(m.lat)<=90&&Number.isFinite(m.lng)&&Math.abs(m.lng)<=180&&Number.isFinite(m.time);}
+const threeDigits=b=>String(Math.round(b)%360).padStart(3,'0');
+const spokenBearing=b=>threeDigits(b).split('').join(' ');
+const spokenDist=d=>d<1000?Math.max(10,Math.round(d/10)*10)+' metres':(d/1852).toFixed(1)+' nautical miles';
+function fmtElapsed(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60),sec=String(s%60).padStart(2,'0');return h?h+':'+String(m).padStart(2,'0')+':'+sec:m+':'+sec;}
+
+const mobControl=L.control({position:'topleft'});
+mobControl.onAdd=()=>{
+ const b=L.DomUtil.create('button','mob-button');
+ b.id='mob';b.type='button';b.textContent='MOB';b.setAttribute('aria-label','Man overboard: mark position now');
+ L.DomEvent.disableClickPropagation(b);L.DomEvent.on(b,'click',markMob);
+ return b;
+};
+mobControl.addTo(map);
+
+function drawMob(){
+ mobLayer.clearLayers();mobMarker=mobLine=null;if(!mob)return;
+ mobLine=L.polyline([],{color:'#E53935',weight:3,dashArray:'8 8',interactive:false}).addTo(mobLayer);
+ mobMarker=L.marker([mob.lat,mob.lng],{zIndexOffset:2000,keyboard:false,interactive:false,icon:L.divIcon({className:'mob-icon',
+  html:'<svg viewBox="0 0 40 40" width="40" height="40"><circle cx="20" cy="20" r="16" fill="#E53935" stroke="#fff" stroke-width="3"/><path d="M13 13 L27 27 M27 13 L13 27" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg>',
+  iconSize:[40,40],iconAnchor:[20,20]})})
+  .bindTooltip('MOB',{permanent:true,direction:'top',offset:[0,-20],className:'mob-label'}).addTo(mobLayer);
+}
+function showMobOnMap(){
+ if(!mob)return;following=false;setFollow();
+ if(lastFix)map.fitBounds([[lastFix.lat,lastFix.lng],[mob.lat,mob.lng]],{padding:[70,70],maxZoom:17});
+ else map.setView([mob.lat,mob.lng],16);
+}
+function speakMob(){
+ mobSpokenAt=Date.now();if(!mob)return;
+ if(!lastFix){speak('Man overboard. No GPS position for distance.');return;}
+ const d=distance(lastFix.lat,lastFix.lng,mob.lat,mob.lng),b=bearingTo(lastFix.lat,lastFix.lng,mob.lat,mob.lng);
+ speak('Man overboard. '+spokenDist(d)+', bearing '+spokenBearing(b)+'.');
+}
+function markMob(){
+ if(mob){speakMob();showMobOnMap();return;} // already marked: repeat the directions, never move the mark
+ const fix=lastKnown&&Date.now()-lastKnown.time<=120000?lastKnown:null;
+ if(!fix){
+  clearSpeech();speak('No GPS position. Man overboard not marked. Start GPS.');
+  alert('No recent GPS position, so MOB could not be marked. Tap Start GPS, then press MOB again.');return;
+ }
+ const age=Math.round((Date.now()-fix.time)/1000);
+ mob={lat:fix.lat,lng:fix.lng,time:Date.now(),demo:fix.demo};
+ try{localStorage.setItem('helm.mob',JSON.stringify(mob));}catch(e){}
+ clearSpeech();speak('Man overboard. Position marked.'+(age>10?' Using position from '+age+' seconds ago.':''));
+ mobSpokenAt=Date.now();
+ drawMob();showMobOnMap();updateMob();
+}
+function updateMob(){
+ ae('mobBanner').hidden=!mob;
+ document.getElementById('mob')?.classList.toggle('active',!!mob);
+ if(!mob)return;
+ const elapsed=Math.max(0,Math.floor((Date.now()-mob.time)/1000));
+ ae('mobElapsed').textContent=(mob.demo?'DEMO · ':'')+'Marked at '+new Date(mob.time).toLocaleTimeString('en-NZ',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+' ('+fmtElapsed(elapsed)+' ago)';
+ ae('mobPos').textContent=fmtPos(mob.lat,mob.lng);
+ if(!lastFix){
+  ae('mobDistance').textContent='—';
+  ae('mobBearing').textContent=mode==='off'?'Start GPS to steer back':'Waiting for GPS…';
+  mobLine?.setLatLngs([]);mobMarker?.setTooltipContent('MOB');return;
+ }
+ const d=distance(lastFix.lat,lastFix.lng,mob.lat,mob.lng),b=bearingTo(lastFix.lat,lastFix.lng,mob.lat,mob.lng);
+ let side='';
+ if(lastFix.course!=null&&lastFix.speed>0.5){ // relative direction only when actually moving
+  const rel=((b-lastFix.course+540)%360)-180;
+  side=Math.abs(rel)<10?' · dead ahead':Math.abs(rel)>170?' · astern':' · '+Math.round(Math.abs(rel))+'° to '+(rel<0?'port':'starboard');
+ }
+ ae('mobDistance').textContent=fmtDist(d);
+ ae('mobBearing').textContent='Steer '+threeDigits(b)+'°'+side;
+ mobLine?.setLatLngs([[lastFix.lat,lastFix.lng],[mob.lat,mob.lng]]);
+ mobMarker?.setTooltipContent('MOB · '+fmtDist(d));
+ if(Date.now()-mobSpokenAt>=30000)speakMob(); // spoken update every 30 seconds
+}
+ae('mobShow').onclick=showMobOnMap;
+ae('mobClear').onclick=()=>{
+ if(!mob||!confirm('Clear the man overboard mark? Only do this once the person is safely recovered.'))return;
+ try{localStorage.removeItem('helm.mob');}catch(e){}
+ mob=null;drawMob();clearSpeech();updateMob();
+};
+try{const saved=JSON.parse(localStorage.getItem('helm.mob')||'null');if(validMob(saved)){mob=saved;mobSpokenAt=Date.now();drawMob();}}catch(e){}
+updateMob();setInterval(updateMob,1000);
 
 // ===================== 6. Reference charts =====================
 const chartSource=document.getElementById('chartSource');
@@ -1796,7 +1918,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.13.0'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.14.0'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
