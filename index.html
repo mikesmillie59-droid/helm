@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.18.0">
+<html lang="en" data-helm-version="1.19.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<title>Helm — 1.18.0</title>
+<title>Helm — 1.19.0</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -894,6 +894,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   .goto-actions button{min-height:48px;font-size:16px;padding:0 8px}
   .wp .row-buttons{display:flex;gap:6px}
   #wpGoto{margin-top:10px;width:100%}
+  /* ---------- Trips ---------- */
+  .trips-body{padding:0 16px 16px}
+  .trip-auto{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:16px}
+  .trip-auto input[type=checkbox]{width:24px;min-height:24px;height:24px;flex:none;margin:0}
+  .trip-buttons button{background:var(--slate);border:1px solid var(--line)}
+  .trip{background:var(--slate-2);border-radius:10px;padding:12px;margin-top:10px}
+  .trip .trip-title{font-weight:600;font-size:17px}
+  .trip .trip-meta{font-size:14px;color:var(--buff-dim);margin-top:2px;font-variant-numeric:tabular-nums}
+  .trip-buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+  .trip-buttons button{min-height:44px;font-size:15px;padding:0 6px}
   /* ---------- Narrow screens (phone / portrait) ---------- */
   @media (max-width:820px){
     #app{grid-template-columns:1fr;grid-template-rows:1fr auto}
@@ -927,7 +937,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.18.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
+    <header class="helm-header"><strong>Helm <small>1.19.0</small></strong><button id="openSettings" aria-haspopup="dialog">Settings</button></header>
     <nav class="main-tabs" aria-label="Main views"><button id="navTab" class="on" aria-pressed="true">Navigation</button><button id="anchorTab" aria-pressed="false">Anchor watch</button></nav>
     <section id="anchorBanner" hidden aria-label="Anchor watch status"><strong id="anchorState" role="status"></strong><span id="anchorDistance"></span><button id="anchorMute" hidden>Silence for 1 minute</button></section>
     <section id="mobBanner" hidden aria-label="Man overboard">
@@ -968,6 +978,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <div class="row"><span>Position</span><b id="pos">—</b></div>
       <div class="row"><span>Accuracy</span><b id="acc">—</b></div>
       <div class="row navigation-only"><span>Nearest</span><b id="nearest">—</b></div>
+      <div class="row navigation-only"><span>Trip</span><b id="tripReadout">—</b></div>
     </div>
     <div class="controls">
       <button id="start" class="primary full">Start GPS</button>
@@ -975,6 +986,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <button id="follow" class="on">Follow boat</button>
     </div>
     <section id="navigationPanel"><details class="points-panel" open><summary>Saved places</summary><div class="place-filters" aria-label="Filter saved places"><button data-place-filter="all" aria-pressed="true" class="on">All</button><button data-place-filter="waypoint" aria-pressed="false">Waypoints</button><button data-place-filter="hazard" aria-pressed="false">Hazards</button><button data-place-filter="fishing" aria-pressed="false">Fishing spots</button></div><p class="reference-note">Filters change the saved places shown on both the map and this list. Enabled proximity alerts stay active for hidden places.</p><div id="list"></div></details>
+      <details class="points-panel" id="tripsPanel"><summary>Trips</summary>
+        <div class="trips-body">
+          <p id="tripStatus" class="status" role="status"></p>
+          <label class="trip-auto"><input id="tripAuto" type="checkbox" checked> Record trips automatically while GPS is on</label>
+          <div id="tripList"></div>
+          <p class="reference-note">A new trip starts after 30 minutes without moving. Trips are kept on this device only. Use GPX to save a copy or open it in another app.</p>
+        </div>
+      </details>
     </section>
     <section id="anchorPanel" hidden aria-label="Anchor watch controls">
       <h2>Anchor watch</h2>
@@ -1083,7 +1102,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <p id="seamarkStatus" role="status">Seamarks off.</p>
       <p id="offlineStatus" role="status">Checking offline app…</p>
     </details>
-    <p class="reference-note">Helm 1.18.0 · Reference charts only; not a substitute for current official navigation charts. Charts need internet except in areas saved offline. Blank areas do not mean clear water.</p>
+    <p class="reference-note">Helm 1.19.0 · Reference charts only; not a substitute for current official navigation charts. Charts need internet except in areas saved offline. Blank areas do not mean clear water.</p>
   </div>
 </dialog>
 
@@ -1330,6 +1349,7 @@ function onFix(lat,lng,speedMs,heading,accuracy){
   updateAnchor();
   updateMob();
   updateGoto();
+  recordTrack(lat,lng,speedMs,accuracy);
 }
 
 function fmtPos(lat,lng){
@@ -1465,7 +1485,7 @@ function stopTracking(){
   if(watchId!=null){navigator.geolocation.clearWatch(watchId);watchId=null;}
   if(demoTimer!=null){clearInterval(demoTimer);demoTimer=null;}
   if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null;}
-  clearSpeech();resetAlerts();clearReadouts();
+  clearSpeech();resetAlerts();clearReadouts();finishTrip();
   document.getElementById('demo').classList.remove('on');
   document.getElementById('demo').textContent='Demo run';
   startBtn.textContent='Start GPS';startBtn.classList.add('primary');
@@ -1838,6 +1858,116 @@ document.getElementById('gotoStop').onclick=stopGoto;
 document.getElementById('wpGoto').onclick=()=>{const p=editingPoint;if(p&&waypoints.includes(p))startGoto(p);};
 try{const saved=JSON.parse(localStorage.getItem('helm.goto')||'null');if(validGoto(saved))gotoTarget=saved;}catch(e){}
 updateGoto();setInterval(()=>{if(gotoTarget&&!lastFix)updateGoto();},2000);
+
+// ===================== Trips (track recording) =====================
+// Stored in IndexedDB so long tracks never crowd out saved places.
+const TRIP_GAP=30*60000;
+let trip=null,lastFinished=null,tripDirty=false,tripLine=null,shownTripLine=null,shownTripId=null,tripStoreOK=true;
+let tripDbPromise=null;
+function tripDb(){return tripDbPromise??=new Promise((res,rej)=>{
+ const r=indexedDB.open('helm',1);r.onupgradeneeded=()=>r.result.createObjectStore('trips',{keyPath:'id'});
+ r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+async function tripTx(mode,fn){
+ const db=await tripDb();
+ return new Promise((res,rej)=>{const tx=db.transaction('trips',mode),req=fn(tx.objectStore('trips'));let out;
+  if(req)req.onsuccess=()=>{out=req.result;};tx.oncomplete=()=>res(out);tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error);});
+}
+const tripAuto=document.getElementById('tripAuto');
+tripAuto.checked=savedSetting('helm.tripAuto')!=='false';
+tripAuto.onchange=()=>{storeSetting('helm.tripAuto',String(tripAuto.checked));if(!tripAuto.checked)finishTrip();renderTrips();};
+const fmtNm=d=>(d/1852).toFixed(d<18520?2:1)+' nm';
+function fmtDuration(ms){const m=Math.round(ms/60000);return m<60?m+' min':Math.floor(m/60)+' h '+String(m%60).padStart(2,'0')+' min';}
+const tripTitle=t=>new Date(t.start).toLocaleString('en-NZ',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
+function tripMeta(t){
+ const kn=v=>(v*1.94384).toFixed(1)+' kn',avg=t.moving>60?t.distance/t.moving:0;
+ return fmtNm(t.distance)+' · '+fmtDuration(t.end-t.start)+(avg?' · avg '+kn(avg):'')+(t.maxSpeed?' · max '+kn(t.maxSpeed):'');
+}
+function persistTrip(t){if(!tripStoreOK)return;tripDirty=false;tripTx('readwrite',st=>st.put(t)).catch(()=>{tripStoreOK=false;renderTrips();});}
+function recordTrack(lat,lng,speed,accuracy){
+ if(mode!=='gps'||!tripAuto.checked||!(accuracy<=50))return;
+ const now=Date.now();
+ if(trip&&now-trip.end>TRIP_GAP)finishTrip(); // long stop: the next movement is a new trip
+ if(!trip){
+  if(lastFinished&&now-lastFinished.end<TRIP_GAP){trip=lastFinished;lastFinished=null;} // GPS restarted soon after: same trip
+  else trip={id:'trip-'+now,start:now,end:now,points:[],distance:0,moving:0,maxSpeed:0};
+  drawCurrentTrip(true);
+ }
+ if(Number.isFinite(speed)&&speed<40)trip.maxSpeed=Math.max(trip.maxSpeed,speed);
+ const pts=trip.points,last=pts[pts.length-1];
+ if(last){
+  const d=distance(last[0],last[1],lat,lng);
+  if(d<Math.max(15,accuracy*1.5))return; // ignore GPS wander at anchor or on the mooring
+  const dt=Math.max(1,(now-trip.start)/1000-last[2]);
+  if(d/dt>40)return;                       // impossible jump
+  trip.distance+=d;if(dt<300&&d/dt>0.5)trip.moving+=dt;
+ }
+ pts.push([+lat.toFixed(6),+lng.toFixed(6),Math.round((now-trip.start)/1000)]);
+ trip.end=now;tripDirty=true;
+ tripLine?.addLatLng([lat,lng]);
+ updateTripReadout();
+}
+function drawCurrentTrip(){
+ if(tripLine){map.removeLayer(tripLine);tripLine=null;}
+ if(trip)tripLine=L.polyline(trip.points.map(p=>[p[0],p[1]]),{color:'#8E6CD1',weight:4,opacity:.85,interactive:false}).addTo(map);
+}
+function finishTrip(){
+ if(!trip)return;const t=trip;trip=null;lastFinished=t;drawCurrentTrip();
+ if(t.points.length<3||t.distance<200){if(tripStoreOK)tripTx('readwrite',st=>st.delete(t.id)).catch(()=>{});} // too short to keep
+ else persistTrip(t);
+ tripDirty=false;updateTripReadout();setTimeout(renderTrips,300);
+}
+function updateTripReadout(){
+ document.getElementById('tripReadout').textContent=trip&&trip.points.length>1?fmtNm(trip.distance)+' · '+fmtDuration(trip.end-trip.start):'—';
+ document.getElementById('tripStatus').textContent=!tripStoreOK?'Trips can’t be saved on this device.':
+  trip?'● Recording: '+fmtNm(trip.distance)+' so far.':tripAuto.checked?(mode==='gps'?'Waiting for the boat to move…':'Recording starts when you tap Start GPS.'):'Automatic recording is off.';
+}
+function tripGpx(t){
+ const x=v=>String(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+ return '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Helm" xmlns="http://www.topografix.com/GPX/1/1">\n<trk><name>'+x('Helm trip '+tripTitle(t))+'</name><trkseg>\n'+
+  t.points.map(p=>'<trkpt lat="'+p[0]+'" lon="'+p[1]+'"><time>'+new Date(t.start+p[2]*1000).toISOString()+'</time></trkpt>').join('\n')+'\n</trkseg></trk>\n</gpx>\n';
+}
+async function shareFile(name,text,type){
+ try{const file=new File([text],name,{type});if(navigator.canShare?.({files:[file]})){await navigator.share({files:[file],title:name});return;}}
+ catch(e){if(e.name==='AbortError')return;}
+ const url=URL.createObjectURL(new Blob([text],{type})),a=document.createElement('a');
+ a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+function hideShownTrip(){if(shownTripLine){map.removeLayer(shownTripLine);shownTripLine=null;}shownTripId=null;}
+async function renderTrips(){
+ updateTripReadout();
+ const el=document.getElementById('tripList');
+ let trips=[];
+ if(tripStoreOK){try{trips=await tripTx('readonly',st=>st.getAll())||[];}catch(e){tripStoreOK=false;updateTripReadout();}}
+ if(trip)trips=[trip,...trips.filter(t=>t.id!==trip.id)];
+ trips.sort((a,b)=>b.start-a.start);
+ if(!trips.length){el.innerHTML='<div class="empty">No trips yet. Start GPS and get under way.</div>';return;}
+ el.innerHTML=trips.map(t=>{const rec=trip&&t.id===trip.id;return `<div class="trip" data-id="${t.id}">
+  <div class="trip-title">${esc(tripTitle(t))}${rec?' · recording':''}</div>
+  <div class="trip-meta">${esc(tripMeta(t))}</div>
+  <div class="trip-buttons"><button data-trip-show>${shownTripId===t.id?'Hide':'Show'}</button><button data-trip-gpx>GPX</button>${rec?'':'<button data-trip-delete>Delete</button>'}</div></div>`;}).join('');
+ const find=b=>trips.find(t=>t.id===b.closest('.trip').dataset.id);
+ el.querySelectorAll('[data-trip-show]').forEach(b=>b.onclick=()=>{
+  const t=find(b);if(!t)return;
+  if(shownTripId===t.id){hideShownTrip();renderTrips();return;}
+  hideShownTrip();if(t.points.length<2)return;
+  shownTripLine=L.polyline(t.points.map(p=>[p[0],p[1]]),{color:'#8E6CD1',weight:4,dashArray:'2 8',lineCap:'round',interactive:false}).addTo(map);
+  shownTripId=t.id;following=false;setFollow();map.fitBounds(shownTripLine.getBounds(),{padding:[50,50]});renderTrips();
+ });
+ el.querySelectorAll('[data-trip-gpx]').forEach(b=>b.onclick=()=>{const t=find(b);if(t)shareFile('helm-trip-'+new Date(t.start).toISOString().slice(0,10)+'.gpx',tripGpx(t),'application/gpx+xml');});
+ el.querySelectorAll('[data-trip-delete]').forEach(b=>b.onclick=async()=>{
+  const t=find(b);if(!t||!confirm('Delete the trip from '+tripTitle(t)+'?'))return;
+  if(shownTripId===t.id)hideShownTrip();if(lastFinished?.id===t.id)lastFinished=null;
+  try{await tripTx('readwrite',st=>st.delete(t.id));}catch(e){}
+  renderTrips();
+ });
+}
+document.getElementById('tripsPanel').addEventListener('toggle',e=>{if(e.target.open)renderTrips();});
+setInterval(()=>{if(trip&&tripDirty)persistTrip(trip);},20000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&trip&&tripDirty)persistTrip(trip);});
+(async()=>{ // remember the latest trip so a quick GPS restart continues it
+ try{const all=await tripTx('readonly',st=>st.getAll())||[];lastFinished=all.sort((a,b)=>b.end-a.end)[0]||null;}catch(e){tripStoreOK=false;}
+ renderTrips();
+})();
 
 // ===================== 6. Reference charts =====================
 const chartSource=document.getElementById('chartSource');
@@ -2306,7 +2436,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.18.0'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.19.0'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
