@@ -1,7 +1,7 @@
 'use strict';
 // Offline fix 1.2.1: bypass HTTP cache and reject outdated app HTML.
 // Caches the self-contained app. LINZ chart tiles saved by the user (Offline charts) are served from helm-charts-v1.
-const VERSION='1.19.0';
+const VERSION='1.20.0';
 const SCOPE=new URL(self.registration.scope);
 const PREFIX='helm-shell-'+SCOPE.pathname+'-';
 const CACHE=PREFIX+VERSION;
