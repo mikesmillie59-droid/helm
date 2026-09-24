@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.22.3">
+<html lang="en" data-helm-version="1.22.4">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<title>Helm — 1.22.3</title>
+<title>Helm — 1.22.4</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -944,7 +944,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.22.3</small></strong><div class="header-buttons"><button id="nightToggle" aria-pressed="false" title="Night mode">Night</button><button id="openSettings" aria-haspopup="dialog">Settings</button></div></header>
+    <header class="helm-header"><strong>Helm <small>1.22.4</small></strong><div class="header-buttons"><button id="nightToggle" aria-pressed="false" title="Night mode">Night</button><button id="openSettings" aria-haspopup="dialog">Settings</button></div></header>
     <nav class="main-tabs" aria-label="Main views"><button id="navTab" class="on" aria-pressed="true">Navigation</button><button id="anchorTab" aria-pressed="false">Anchor watch</button></nav>
     <section id="anchorBanner" hidden aria-label="Anchor watch status"><strong id="anchorState" role="status"></strong><span id="anchorDistance"></span><button id="anchorMute" hidden>Silence for 1 minute</button></section>
     <section id="mobBanner" hidden aria-label="Man overboard">
@@ -1117,7 +1117,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <h3>Troubleshooting</h3>
       <p id="offlineStatus" class="status" role="status">Checking offline app…</p>
     </details>
-    <p class="reference-note">Helm 1.22.3 · Reference charts only; not a substitute for current official navigation charts. Charts need internet except in areas saved offline. Blank areas do not mean clear water.</p>
+    <p class="reference-note">Helm 1.22.4 · Reference charts only; not a substitute for current official navigation charts. Charts need internet except in areas saved offline. Blank areas do not mean clear water.</p>
   </div>
 </dialog>
 
@@ -2114,6 +2114,7 @@ let appliedChart=null,appliedKey='';
 // NOAA's own level numbers start at 2 on the standard web-map scale (their level 0 = zoom 2), so every request subtracts 2.
 const NOAA_TILES='https://gis.charttools.noaa.gov/arcgis/rest/services/MarineChart_Services/NOAACharts/MapServer/tile/{z}/{y}/{x}';
 const US_WATERS=[[-126,23,-65,50],[-180,50,-129,72],[172,50,180,56],[-162,18,-153,23],[-68,17,-64,19],[144,13,146,21],[-171,-15,-169,-14]];
+let underlayLayer=null; // street map beneath NOAA charts, so there's always a map where NOAA draws nothing
 const inUSWaters=(lat,lng)=>US_WATERS.some(b=>lng>=b[0]&&lng<=b[2]&&lat>=b[1]&&lat<=b[3]);
 function reportCharts(){
  if(!appliedChart)return;
@@ -2212,6 +2213,7 @@ function applyChart(options={}){
  }
  clearCharts();
  if(backgroundLayer){map.removeLayer(backgroundLayer);backgroundLayer=null;}
+ if(underlayLayer){map.removeLayer(underlayLayer);underlayLayer=null;}
  if(isLinz){
   appliedChart=chartId.value;appliedKey=key;
   if(options.recenter!==false)showSelectedChart();refreshCharts();
@@ -2219,7 +2221,10 @@ function applyChart(options={}){
   const saved=remember?storeSetting('helm.linzKey',key):removeSetting('helm.linzKey');
   if(!saved)alert('The chart can be used now, but the key preference could not be saved.');
  }else if(chartSource.value==='noaa'){
-  backgroundLayer=L.tileLayer(NOAA_TILES,{maxZoom:18,minNativeZoom:2,maxNativeZoom:18,zoomOffset:-2,
+  // NOAA draws little or nothing when zoomed far out (and nothing outside US waters): show the street map underneath.
+  underlayLayer=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,zIndex:0,
+   attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'}).addTo(map);
+  backgroundLayer=L.tileLayer(NOAA_TILES,{maxZoom:18,minNativeZoom:2,maxNativeZoom:18,zoomOffset:-2,zIndex:1,
    attribution:'Charts: <a href="https://nauticalcharts.noaa.gov/">NOAA Office of Coast Survey</a> · Reference only'});
   monitorTiles(backgroundLayer,'US charts (NOAA)',chartStatus);
   chartStatus.textContent='US charts (NOAA) — requesting tiles…';backgroundLayer.addTo(map);
@@ -2274,7 +2279,7 @@ const AREAS={nz:[-41,173,5],northland:[-35.2,174.15,11],tauranga:[-37.65,176.17,
  glacierbay:[58.7,-136.1,9],pws:[60.75,-147.0,9],maui:[20.85,-156.6,10],puertorico:[18.35,-65.2,9]};
 document.getElementById('chartArea').onchange=e=>{
  const area=AREAS[e.target.value],label=e.target.selectedOptions[0]?.textContent||'';e.target.value='';if(!area)return;
- const hint=document.getElementById('areaHint');hint.textContent='✓ Map moved to '+label+'.';hint.hidden=false;
+ const hint=document.getElementById('areaHint');hint.textContent='✓ Map moved to '+label+'.'+(area[2]<=6?' Pinch in on the coast to bring up the charts.':'');hint.hidden=false;
  following=false;setFollow();map.setView([area[0],area[1]],area[2]);settingsDialog.close();
 };
 document.getElementById('seamarks').onchange=e=>{
@@ -2512,7 +2517,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.22.3'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.22.4'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
