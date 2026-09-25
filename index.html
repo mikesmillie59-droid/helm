@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-helm-version="1.22.4">
+<html lang="en" data-helm-version="1.22.5">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<title>Helm — 1.22.4</title>
+<title>Helm — 1.22.5</title>
 <!-- Leaflet 1.9.4, BSD-2-Clause. License below. -->
 <style>
 /* required styles */
@@ -944,7 +944,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   </dialog>
 
   <aside id="panel">
-    <header class="helm-header"><strong>Helm <small>1.22.4</small></strong><div class="header-buttons"><button id="nightToggle" aria-pressed="false" title="Night mode">Night</button><button id="openSettings" aria-haspopup="dialog">Settings</button></div></header>
+    <header class="helm-header"><strong>Helm <small>1.22.5</small></strong><div class="header-buttons"><button id="nightToggle" aria-pressed="false" title="Night mode">Night</button><button id="openSettings" aria-haspopup="dialog">Settings</button></div></header>
     <nav class="main-tabs" aria-label="Main views"><button id="navTab" class="on" aria-pressed="true">Navigation</button><button id="anchorTab" aria-pressed="false">Anchor watch</button></nav>
     <section id="anchorBanner" hidden aria-label="Anchor watch status"><strong id="anchorState" role="status"></strong><span id="anchorDistance"></span><button id="anchorMute" hidden>Silence for 1 minute</button></section>
     <section id="mobBanner" hidden aria-label="Man overboard">
@@ -1117,7 +1117,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
       <h3>Troubleshooting</h3>
       <p id="offlineStatus" class="status" role="status">Checking offline app…</p>
     </details>
-    <p class="reference-note">Helm 1.22.4 · Reference charts only; not a substitute for current official navigation charts. Charts need internet except in areas saved offline. Blank areas do not mean clear water.</p>
+    <p class="reference-note">Helm 1.22.5 · Reference charts only; not a substitute for current official navigation charts. Charts need internet except in areas saved offline. Blank areas do not mean clear water.</p>
   </div>
 </dialog>
 
@@ -1334,7 +1334,11 @@ document.getElementById('testVoice').onclick=()=>speak('Voice check. Approaching
 
 // ===================== 4. Boat + GPS =====================
 const boatIcon=L.divIcon({className:'boat',html:
- `<svg viewBox="0 0 44 44"><path id="hull" d="M22 4 L34 36 L22 30 L10 36 Z" fill="#F26A21" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>`});
+ `<svg viewBox="0 0 44 44" aria-label="Your boat"><!-- top-down motor cruiser, bow pointing the way you're heading -->
+  <path id="hull" d="M22 2 C28.5 8 31.5 15.5 31.5 24 L31.5 38.5 Q31.5 42 28 42 L16 42 Q12.5 42 12.5 38.5 L12.5 24 C12.5 15.5 15.5 8 22 2 Z" fill="#F26A21" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+  <rect x="16.5" y="18" width="11" height="15" rx="2" fill="#fff" opacity=".92"/>
+  <rect x="16.5" y="18" width="11" height="3.5" rx="1.5" fill="#2A3238"/>
+  <path d="M22 5.5 L22 14" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".8"/></svg>`});
 let boat=null, accCircle=null, following=true, watchId=null, lastFix=null;
 let lastKnown=null; // last good position; survives a brief GPS dropout so MOB can still be marked
 let mob=null;       // active man-overboard mark {lat,lng,time,demo}
@@ -2517,7 +2521,7 @@ async function checkOfflineApp(worker){
       channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};
       worker.postMessage({type:'HELM_OFFLINE_STATUS'},[channel.port2]);
     });
-    offlineReady=result.version==='1.22.4'&&result.ready===true;showOfflineStatus();
+    offlineReady=result.version==='1.22.5'&&result.ready===true;showOfflineStatus();
   }catch(e){offlineReady=false;showOfflineStatus();}
 }
 async function registerOfflineApp(){
